@@ -1,0 +1,141 @@
+// EggFarm IMS — Prisma schema
+// Slice 1: warehouse ledger + stock projection (the foundation for rules 5.1/5.2/5.4).
+// See CLAUDE.md §5 and docs/SRS.md §7 for the always-true rules behind this model.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Egg grade by Size & Health — stockable grades only (CLAUDE.md §6).
+/// KOSONG (empty shells) is tracking-only and intentionally NOT here: it never
+/// enters grading or stock.
+enum SizeHealthGrade {
+  ANGKAT_RAK
+  A_PLUS_PLUS
+  A_PLUS
+  A
+  B
+  C
+  KECIL
+  MINI
+  RETAK
+  PLASTIK
+  LUNAK
+}
+
+/// Kind of ledger movement (CLAUDE.md §5.1). Append-only; never updated/deleted.
+enum MovementType {
+  IN
+  OUT
+  CORRECTION
+  VOID
+}
+
+/// What originated a movement. The specific sources (Angkat Rak, Grading, Sales,
+/// Correction) arrive in later slices; ADJUSTMENT is the generic/manual source
+/// used by the Slice 1 foundation actions.
+enum SourceType {
+  ANGKAT_RAK
+  GRADING
+  SALES
+  CORRECTION
+  ADJUSTMENT
+}
+
+/// Soft-delete status for master/catalog rows (CLAUDE.md §6 "Soft-delete only").
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// ---------------------------------------------------------------------------
+// Master data
+// ---------------------------------------------------------------------------
+
+/// Grade by Type (Normal, Omega, ...). A table, extensible by Superadmin.
+/// One half of the Egg SKU composite (sizeHealthGrade + typeGradeId).
+model GradeType {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  status    RecordStatus @default(ACTIVE)
+  sortOrder Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  warehouseStocks WarehouseStock[]
+  stockMovements  StockMovement[]
+}
+
+/// A storage location for graded egg stock. Minimal in Slice 1; low-stock
+/// thresholds and farmhouse mapping arrive in later slices.
+model Warehouse {
+  id        String       @id @default(cuid())
+  name      String
+  code      String       @unique
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  warehouseStocks WarehouseStock[]
+  stockMovements  StockMovement[]
+}
+
+// ---------------------------------------------------------------------------
+// Ledger + projection (rules 5.1, 5.2, 5.4)
+// ---------------------------------------------------------------------------
+
+/// Balance cache: current quantity (pcs) per Egg SKU per warehouse.
+/// DERIVED from the ledger and written ONLY by src/lib/server/ledger.ts (rule 5.4).
+/// If this ever disagrees with the folded ledger, the ledger wins (rule 5.1).
+model WarehouseStock {
+  id              String          @id @default(cuid())
+  warehouseId     String
+  sizeHealthGrade SizeHealthGrade
+  typeGradeId     String
+  currentQuantity Int             @default(0) // pcs; never negative
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  gradeType GradeType @relation(fields: [typeGradeId], references: [id])
+
+  @@unique([warehouseId, sizeHealthGrade, typeGradeId])
+  @@index([warehouseId])
+}
+
+/// Append-only ledger of every stock change (rule 5.1). NEVER UPDATE or DELETE a
+/// row — corrections/voids are new compensating rows. Written ONLY by
+/// src/lib/server/ledger.ts (rule 5.4). preQuantity/postQuantity snapshot the
+/// balance around this movement so the ledger is self-describing and auditable.
+model StockMovement {
+  id                String          @id @default(cuid())
+  warehouseId       String
+  sizeHealthGrade   SizeHealthGrade
+  typeGradeId       String
+  movementType      MovementType
+  quantity          Int // magnitude in pcs (> 0); direction implied by movementType
+  unitUsed          String          @default("PCS") // how the operator entered it (audit only)
+  sourceType        SourceType
+  sourceReferenceId String? // id of the originating record (collection/grading/sale/...)
+  reason            String? // required (>= 20 chars) for CORRECTION; enforced at that entry point
+  preQuantity       Int // balance before this movement
+  postQuantity      Int // balance after this movement (== WarehouseStock.currentQuantity)
+  date              DateTime        @default(now()) // business date of the movement
+  enteredById       String? // FK to User added in Slice 2
+  createdAt         DateTime        @default(now()) // immutable audit timestamp
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  gradeType GradeType @relation(fields: [typeGradeId], references: [id])
+
+  @@index([warehouseId, date])
+  @@index([warehouseId, sizeHealthGrade, typeGradeId])
+}
