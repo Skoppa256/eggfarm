@@ -57,6 +57,14 @@ enum RecordStatus {
   INACTIVE
 }
 
+/// The three roles, enforced server-side (CLAUDE.md §6 / rule 5.5).
+/// OWNER is read-only and must be rejected on every write path.
+enum Role {
+  SUPERADMIN
+  ADMIN
+  OWNER
+}
+
 // ---------------------------------------------------------------------------
 // Master data
 // ---------------------------------------------------------------------------
@@ -138,4 +146,39 @@ model StockMovement {
 
   @@index([warehouseId, date])
   @@index([warehouseId, sizeHealthGrade, typeGradeId])
+}
+
+// ---------------------------------------------------------------------------
+// Auth & users (Slice 2)
+// ---------------------------------------------------------------------------
+
+/// An application user. Superadmin provisions all users; no self-signup.
+/// Deactivation (status = INACTIVE) locks the user out immediately because every
+/// request re-checks status via the DB-backed session.
+model User {
+  id           String       @id @default(cuid())
+  name         String
+  username     String       @unique
+  passwordHash String
+  role         Role
+  status       RecordStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  sessions Session[]
+}
+
+/// Server-side session row. A signed httpOnly cookie (jose) carries only the
+/// session id; the row is the source of truth, so deleting it (logout, deactivate)
+/// invalidates the cookie immediately.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

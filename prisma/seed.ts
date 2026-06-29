@@ -5,8 +5,14 @@
 // Seeds the minimum Slice 1 needs: two Grade Types (Normal, Omega) and one
 // warehouse.
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 
 import { PrismaClient } from "../src/generated/prisma/client";
+import { Role } from "../src/generated/prisma/enums";
+
+// Initial Superadmin credentials. Change the password after first login.
+const SUPERADMIN_USERNAME = "superadmin";
+const SUPERADMIN_PASSWORD = "superadmin123";
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -35,11 +41,30 @@ async function main() {
       create: { name: "Gudang Utama", code: "WH-01" },
     });
 
-    const [gradeTypes, warehouses] = await Promise.all([
+    // Initial Superadmin. `update: {}` so re-running never resets a changed password.
+    const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10);
+    await prisma.user.upsert({
+      where: { username: SUPERADMIN_USERNAME },
+      update: {},
+      create: {
+        name: "Super Admin",
+        username: SUPERADMIN_USERNAME,
+        passwordHash,
+        role: Role.SUPERADMIN,
+      },
+    });
+
+    const [gradeTypes, warehouses, users] = await Promise.all([
       prisma.gradeType.count(),
       prisma.warehouse.count(),
+      prisma.user.count(),
     ]);
-    console.log(`Seed complete: ${gradeTypes} grade types, ${warehouses} warehouse(s).`);
+    console.log(
+      `Seed complete: ${gradeTypes} grade types, ${warehouses} warehouse(s), ${users} user(s).`,
+    );
+    console.log(
+      `  Superadmin login: ${SUPERADMIN_USERNAME} / ${SUPERADMIN_PASSWORD}  (change after first login)`,
+    );
   } finally {
     await prisma.$disconnect();
   }

@@ -4,11 +4,16 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 1)
+## CURRENT STATUS (updated after Slice 2)
 
-- **Slices complete & committed:** Slice 1 (warehouse ledger + stock projection).
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **9/9 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 2 (auth, users, roles) — wires the real `requireRole` into Slice 1's action, replacing the stub.
+- **Slices complete & committed:** Slice 1 (warehouse ledger), Slice 2 (auth, users, roles).
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **21/21 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 3 (config & master data: farmhouses, warehouses, mapping log, units, grade types).
+
+### ⚠️ Running the app locally — Postgres.app permission
+On first `pnpm dev` / `pnpm start`, **Postgres.app shows a macOS permission dialog** ("trust authentication" / app permissions) for the long-running server process. You must click **Allow**, or pages that hit the DB return 500 with
+`Postgres.app failed to verify "trust" authentication … You did not confirm the permission dialog`.
+This is an OS/Postgres.app prompt, **not** an app bug: short-lived connections (Vitest, `prisma`, seed) are already approved, which is why all gates and tests pass. Middleware redirects (no DB) and the login→/warehouse bounce were smoke-verified live; the authenticated page render couldn't be smoke-tested headless because the dialog can't be clicked unattended — but `getSessionUser`'s full logic is covered by the action tests.
 
 ### ⚠️ Read this first — Node version (environment)
 The Prisma 7 CLI **does not run on the shell's default Node** (`/usr/local/bin/node` = **v20.11.1**): `@prisma/dev` does `require()` on an ESM-only module, which needs `require(esm)` (Node ≥ 20.17 / 22). Every `prisma`, `next`, `pnpm`, and test command must run under **Node 22**.
@@ -26,9 +31,11 @@ The Prisma 7 CLI **does not run on the shell's default Node** (`/usr/local/bin/n
 nvm use
 pnpm install                 # node_modules already present; safe to re-run
 pnpm exec prisma generate    # generated client is gitignored — run on a fresh clone
-pnpm db:seed                 # seeds Normal/Omega grade types + warehouse WH-01 into eggfarm
-pnpm dev                     # http://localhost:3000  (/ redirects to /warehouse)
+pnpm db:seed                 # seeds grade types + warehouse + initial Superadmin
+pnpm dev                     # http://localhost:3000  (redirects to /login)
 ```
+Initial login (created by the seed; change the password after first login):
+**`superadmin` / `superadmin123`**.
 
 ### Run the tests (always against eggfarm_test, never the dev DB)
 ```bash
@@ -48,13 +55,76 @@ pnpm db:studio               # prisma studio
 ```
 
 ### Needs your review
-- **Nothing blocking.** No flock/HD%/FCR/feed math in this slice.
-- **`SourceType.ADJUSTMENT`** was added to the movement source enum so Slice 1's
-  generic foundation actions have a sensible source. The SRS lists Grading / Angkat
-  Rak / Sales / Correction; later slices use those explicitly. (Assumption A1.)
-- **`StockMovement.enteredById`** is a nullable `String` (no FK yet); the Slice 1
-  stub writes `"system"`. Slice 2 adds the `User` model + FK and the real user id.
-  (Assumption A2.)
+- **Nothing blocking.** No flock/HD%/FCR/feed math in these slices.
+- **bcrypt → bcryptjs (Slice 2).** Used `bcryptjs` (pure-JS, same `$2` hash format)
+  instead of native `bcrypt`, which needs a node-gyp build that pnpm skips by
+  default. Same algorithm the SRS calls for. (Assumption A5.)
+- **`StockMovement.enteredById` still a nullable `String` (no FK to `User`).**
+  Kept decoupled so historic/seed rows aren't forced to reference a user; the audit
+  value is the real user id from the session now. Add the FK in a later slice if you
+  want referential integrity. (Assumption A2, carried forward.)
+- **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
+  (Assumption A1).
+- **Initial Superadmin password** is the hard-coded seed default `superadmin123`
+  — change it after first login.
+
+---
+
+## Slice 2 — Auth, users, roles ✅
+
+**Goal (BUILD_PLAN):** real `requireRole`/`requireUser`, login/logout, middleware,
+Superadmin-only user CRUD; wire the real guard into Slice 1's action.
+
+### What was built
+- **Schema** → migration #2 `…_slice2_auth_users`: `Role` enum (SUPERADMIN/ADMIN/
+  OWNER), `User` (unique username, bcrypt `passwordHash`, role, status, lastLoginAt),
+  `Session` (id, userId, expiresAt; cascade-deletes with the user).
+- **`src/lib/server/password.ts`** — `hashPassword`/`verifyPassword` via **bcryptjs**.
+- **`src/lib/server/auth.ts`** (replaces the stub):
+  - `authenticate(username, password)` — DB + bcrypt; rejects unknown/inactive/wrong
+    with one opaque error (no username enumeration). A deactivated user can't log in.
+  - `createSession` / `getSessionUser` / `destroySession` — a signed httpOnly cookie
+    (**jose** HS256) carries only the session id; the `Session` row is the source of
+    truth, so logout/deactivation invalidate immediately.
+  - `requireUser` / `requireRole` + a **pure `assertRole`** (unit-testable). OWNER is
+    rejected on every write path.
+- **`src/lib/server/users.ts`** — `listUsers` / `createUser` (hashes password, unique
+  username) / `setUserStatus` (soft activate/deactivate; deactivation also deletes the
+  user's sessions for instant lockout).
+- **Actions** (role-checked first, rule 5.5): `loginAction`, `logoutAction`,
+  `createUserAction` + `setUserStatusAction` (both `requireRole("SUPERADMIN")`).
+  Slice 1's `recordMovementAction` is unchanged but its `requireRole` is now real.
+- **UI**: `/login` (public) + form; `(app)/layout.tsx` re-checks the DB session and
+  redirects to `/login`, shows nav + logout; `/users` Superadmin admin (list, create,
+  activate/deactivate, can't deactivate yourself).
+- **`src/middleware.ts`** — Edge first-pass gate: verifies the cookie JWT and redirects
+  unauthenticated users to `/login` (and logged-in users away from `/login`). Real
+  enforcement stays in `getSessionUser` (DB).
+- **Seed** extended with an idempotent initial Superadmin.
+- **Tests (12 new, 21 total):** password round-trip; `authenticate` (correct / wrong /
+  **deactivated** / unknown); `assertRole` (OWNER rejected, listed roles allowed);
+  end-to-end action tests with a real session (cookie jar mocked, real JWT + DB):
+  **OWNER rejected on the Slice 1 OUT path**, ADMIN allowed; **only SUPERADMIN creates
+  users**, ADMIN forbidden.
+
+### Key decisions
+- **DB-backed sessions, id-only cookie.** The cookie holds just the signed session id;
+  every request reloads the `Session` + `User`, so a deactivated user or a logout is
+  enforced on the very next request (CLAUDE.md §3).
+- **Defense in depth.** Middleware redirects (no DB on the edge); the protected layout
+  re-checks the real DB session; each mutating action re-checks the role. UI hiding is
+  never the gate.
+- **Testing the write path without a request scope.** Action tests mock only the
+  cookie transport (`next/headers`) and `revalidatePath`; everything else — JWT sign/
+  verify, session load, role check — runs for real, so the "OWNER forbidden" guarantee
+  is proven through the actual action.
+
+### Assumptions
+- **A5 — bcryptjs over native bcrypt** (see "Needs your review").
+- **A2 (carried) — `enteredById` stays a plain string** (no FK to `User`).
+
+### Test status
+`pnpm test` → **21 passed** (6 files). `tsc`, `eslint`, `next build` all clean.
 
 ---
 
