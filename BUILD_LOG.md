@@ -4,11 +4,17 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 2)
+## CURRENT STATUS (updated after Slice 3)
 
-- **Slices complete & committed:** Slice 1 (warehouse ledger), Slice 2 (auth, users, roles).
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **21/21 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 3 (config & master data: farmhouses, warehouses, mapping log, units, grade types).
+- **Slices complete & committed:** Slice 1 (warehouse ledger), Slice 2 (auth, users, roles), a
+  refactor (`enteredById` FK to User), Slice 3 (config & master data).
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **31/31 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 4 (collection input) — depends on Slices 1 & 3.
+
+### Migrations (apply in order; `pnpm test` and `pnpm db:deploy` do this for you)
+1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` · 4. `slice3_config_master_data`.
+If a migration ever fails mid-way on the **test** DB (e.g. a made-required column with old NULLs),
+resolve with `DATABASE_URL=<test-url> pnpm exec prisma migrate resolve --rolled-back <name>` then re-run.
 
 ### ⚠️ Running the app locally — Postgres.app permission
 On first `pnpm dev` / `pnpm start`, **Postgres.app shows a macOS permission dialog** ("trust authentication" / app permissions) for the long-running server process. You must click **Allow**, or pages that hit the DB return 500 with
@@ -55,18 +61,78 @@ pnpm db:studio               # prisma studio
 ```
 
 ### Needs your review
-- **Nothing blocking.** No flock/HD%/FCR/feed math in these slices.
-- **bcrypt → bcryptjs (Slice 2).** Used `bcryptjs` (pure-JS, same `$2` hash format)
-  instead of native `bcrypt`, which needs a node-gyp build that pnpm skips by
-  default. Same algorithm the SRS calls for. (Assumption A5.)
-- **`StockMovement.enteredById` still a nullable `String` (no FK to `User`).**
-  Kept decoupled so historic/seed rows aren't forced to reference a user; the audit
-  value is the real user id from the session now. Add the FK in a later slice if you
-  want referential integrity. (Assumption A2, carried forward.)
+- **Nothing blocking.** No flock/HD%/FCR/feed math yet.
+- **Business dates are UTC date-only (Slice 3).** Effective dates use `@db.Date`
+  normalized to UTC midnight; "today"/"next day"/"as-of" arithmetic is thus
+  timezone-agnostic, but *what counts as "today"* is the UTC calendar day. For a
+  WIB (UTC+7) farm, entries between 00:00–07:00 WIB fall on the previous UTC day.
+  Revisit with a farm-timezone helper if that boundary matters. (Assumption A6.)
+- **`MAX_BATCHES_PER_DAY = 10`** is a code constant (SRS says "max configurable"; no
+  global-settings table in scope). Change the constant in `farmhouses.ts` +
+  `schemas/config.ts` if a different ceiling is needed. (Assumption A7.)
+- **MeasurementUnit is a managed catalog** seeded with Rak=30/Pcs=1, but the actual
+  pcs⇄rak conversion still lives in `src/lib/units.ts` (code, not DB-driven). Wire
+  entry to the DB units only if/when runtime-configurable units are required.
+  (Assumption A8.)
+- **bcrypt → bcryptjs (Slice 2).** Pure-JS, same `$2` hash format; avoids a node-gyp
+  build pnpm skips. (Assumption A5.)
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
-  (Assumption A1).
-- **Initial Superadmin password** is the hard-coded seed default `superadmin123`
-  — change it after first login.
+  (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
+- **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Slice 3 — Config & master data ✅
+
+**Goal (BUILD_PLAN):** Admin-managed farmhouses/warehouses/mapping and
+Superadmin-managed units/grade types, with effective-dated config and soft-delete.
+
+### What was built
+- **Schema** → migration #4: `Farmhouse`; `FarmhouseWarehouseMapping` and
+  `FarmhouseBatchSetting` as **append-only, effective-dated logs** (`effectiveFrom`
+  `@db.Date`, `changedBy` FK); `MeasurementUnit`. Neither the warehouse assignment
+  nor the batch count is a mutable column — both are resolved from their log as of a
+  date, so history is preserved (SRS §7 / FR-41).
+- **`src/lib/dates.ts`** — UTC date-only helpers (`toDateOnly`, `addDays`, …), pure
+  and unit-tested; the date logic is passed dates explicitly so it's testable.
+- **`src/lib/server/farmhouses.ts`** —
+  - `resolveWarehouseId(id, asOf)` / `resolveMaxBatches(id, asOf)` = the row with the
+    greatest `effectiveFrom <= asOf` (ties by `createdAt`).
+  - `createFarmhouse` (initial mapping + batch setting effective *today*, atomic),
+    `changeWarehouseMapping` (date-effective; deactivated warehouses refused),
+    `changeMaxBatches` (**effectiveFrom = today + 1**, so it takes effect the next
+    day), `setFarmhouseStatus` (soft delete), `listFarmhousesWithCurrent`.
+- **`warehouses.ts` / `measurementUnits.ts` / `gradeTypes.ts`** — CRUD services
+  (soft-delete via status).
+- **Zod schemas** (`schemas/config.ts`) + **role-split actions** (requireRole first,
+  rule 5.5): Admin (+Superadmin) create/change farmhouses, warehouses, mapping,
+  batch; **Superadmin-only** units & grade types. OWNER rejected everywhere.
+- **UI**: `/farmhouses` (create, re-map, next-day batch change, activate/deactivate),
+  `/warehouses`, `/units`, `/grade-types`; role-gated nav; seed adds Rak/Pcs units.
+- **Tests (10 new, 31 total):** as-of-date mapping resolution and next-day batch
+  effectiveness against worked examples; out-of-range batch rejected; mapping to a
+  deactivated warehouse refused; role split (OWNER/Admin/Superadmin); date helpers.
+
+### Key decisions
+- **Effective-dated logs, not mutable columns.** Both `Farmhouse` config fields are
+  versioned; the "current" value is derived, so a change never rewrites history and
+  the batch change can be future-dated to satisfy FR-41's "next day".
+- **Explicit dates into services.** Every resolver/mutator takes the reference date
+  as a parameter (the action passes `todayDateOnly()`), keeping the risky date logic
+  pure and unit-testable without mocking the clock.
+
+### Test status
+`pnpm test` → **31 passed** (9 files). `tsc`, `eslint`, `next build` all clean.
+
+---
+
+## refactor — enteredById FK to User ✅
+
+Made `StockMovement.enteredById` a **required FK to User** (was a nullable `String`),
+so every movement is attributed with referential integrity. Migration #3; ledger
+input now requires `enteredById`; test fixture creates a user. Existing dev movements
+already referenced the superadmin (no backfill needed). Note: reverses earlier
+assumption A2. Gates green (21/21 at the time).
 
 ---
 

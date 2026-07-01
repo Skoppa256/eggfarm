@@ -93,8 +93,9 @@ model Warehouse {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  warehouseStocks WarehouseStock[]
-  stockMovements  StockMovement[]
+  warehouseStocks   WarehouseStock[]
+  stockMovements    StockMovement[]
+  farmhouseMappings FarmhouseWarehouseMapping[]
 }
 
 // ---------------------------------------------------------------------------
@@ -168,8 +169,10 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  sessions       Session[]
-  stockMovements StockMovement[]
+  sessions        Session[]
+  stockMovements  StockMovement[]
+  mappingChanges  FarmhouseWarehouseMapping[]
+  batchChanges    FarmhouseBatchSetting[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -184,4 +187,73 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Config & master data (Slice 3)
+// ---------------------------------------------------------------------------
+
+/// A farmhouse (kandang). Admin-managed operational structure. Its warehouse
+/// assignment and max-batches-per-day are NOT mutable columns — both are
+/// effective-dated logs (below) so history is preserved and changes take effect on
+/// a specific date (SRS FR-41).
+model Farmhouse {
+  id        String       @id @default(cuid())
+  name      String
+  code      String       @unique
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  warehouseMappings FarmhouseWarehouseMapping[]
+  batchSettings     FarmhouseBatchSetting[]
+}
+
+/// Effective-dated farmhouse→warehouse mapping (SRS §7 "Mapping Log"). Append-only:
+/// a change adds a new row. The assignment in force on date D is the row with the
+/// greatest effectiveFrom <= D (ties broken by createdAt). History is retained, so
+/// past entries stay linked to the warehouse they were dispatched to.
+model FarmhouseWarehouseMapping {
+  id            String   @id @default(cuid())
+  farmhouseId   String
+  warehouseId   String
+  effectiveFrom DateTime @db.Date
+  changedById   String
+  createdAt     DateTime @default(now())
+
+  farmhouse Farmhouse @relation(fields: [farmhouseId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  changedBy User      @relation(fields: [changedById], references: [id])
+
+  @@index([farmhouseId, effectiveFrom])
+}
+
+/// Effective-dated max-batches-per-day per farmhouse. A change made on day D is
+/// stored with effectiveFrom = D+1, so it "takes effect the next day" (SRS FR-41);
+/// a newly created farmhouse's first setting is effective the same day. The value
+/// in force on date D is the row with the greatest effectiveFrom <= D.
+model FarmhouseBatchSetting {
+  id               String   @id @default(cuid())
+  farmhouseId      String
+  maxBatchesPerDay Int
+  effectiveFrom    DateTime @db.Date
+  changedById      String
+  createdAt        DateTime @default(now())
+
+  farmhouse Farmhouse @relation(fields: [farmhouseId], references: [id])
+  changedBy User      @relation(fields: [changedById], references: [id])
+
+  @@index([farmhouseId, effectiveFrom])
+}
+
+/// Measurement unit catalog (Superadmin-managed). `pcsEquivalent` expresses each
+/// unit in pieces (Rak = 30, Pcs = 1), CLAUDE.md §6.
+model MeasurementUnit {
+  id            String       @id @default(cuid())
+  name          String       @unique
+  pcsEquivalent Int
+  status        RecordStatus @default(ACTIVE)
+  sortOrder     Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }

@@ -41,6 +41,18 @@ async function main() {
       create: { name: "Gudang Utama", code: "WH-01" },
     });
 
+    // Default measurement units (Superadmin catalog): Rak = 30 pcs, Pcs = 1.
+    await prisma.measurementUnit.upsert({
+      where: { name: "Rak" },
+      update: {},
+      create: { name: "Rak", pcsEquivalent: 30, sortOrder: 1 },
+    });
+    await prisma.measurementUnit.upsert({
+      where: { name: "Pcs" },
+      update: {},
+      create: { name: "Pcs", pcsEquivalent: 1, sortOrder: 2 },
+    });
+
     // Initial Superadmin. `update: {}` so re-running never resets a changed password.
     const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10);
     await prisma.user.upsert({
