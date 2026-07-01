@@ -2,9 +2,10 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { prisma } from "@/lib/server/db";
+import type { Prisma } from "@/generated/prisma/client";
 import { MovementType, SourceType, type SizeHealthGrade } from "@/generated/prisma/enums";
 import { InsufficientStockError } from "@/lib/errors";
+import { prisma } from "@/lib/server/db";
 
 // THE LEDGER — the ONLY writer of stock in the entire codebase (CLAUDE.md §5.4).
 //
@@ -47,6 +48,9 @@ export interface MovementInput extends SkuRef {
 
 type Direction = "IN" | "OUT";
 
+/** Prisma interactive-transaction client (what `$transaction((tx) => …)` yields). */
+type Tx = Prisma.TransactionClient;
+
 function assertPositiveIntPcs(quantity: number): void {
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new Error(`quantity must be a positive integer (pcs), got ${quantity}`);
@@ -54,14 +58,17 @@ function assertPositiveIntPcs(quantity: number): void {
 }
 
 /**
- * Post one movement and update its balance, atomically and with a row lock.
- * Shared by `recordIn` / `recordOut`; `direction` sets the sign and movement type.
+ * Post one movement + balance update within an EXISTING transaction `tx`. This code
+ * still lives in ledger.ts (rule 5.4 holds), so a caller that must bundle stock with
+ * other writes — e.g. a collection saving its Angkat Rak lifts — passes its own `tx`
+ * and gets a single atomic commit (rule 5.1). Locks the balance row FOR UPDATE
+ * (rule 5.2) and rejects an oversell.
  */
-async function postMovement(input: MovementInput, direction: Direction) {
+async function postMovementTx(tx: Tx, input: MovementInput, direction: Direction) {
   const { warehouseId, sizeHealthGrade, typeGradeId, quantity } = input;
   assertPositiveIntPcs(quantity);
 
-  return prisma.$transaction(async (tx) => {
+  {
     // 1) Ensure the balance row exists so there is a row to lock. ON CONFLICT DO
     //    NOTHING keeps the transaction healthy if two writers first-touch the same
     //    SKU concurrently (the loser simply finds the row already present).
@@ -121,7 +128,12 @@ async function postMovement(input: MovementInput, direction: Direction) {
         enteredById: input.enteredById,
       },
     });
-  });
+  }
+}
+
+/** Standalone: post one movement in its own transaction. */
+async function postMovement(input: MovementInput, direction: Direction) {
+  return prisma.$transaction((tx) => postMovementTx(tx, input, direction));
 }
 
 /** Record stock coming IN (e.g. Angkat Rak post, grading submit). */
@@ -135,6 +147,19 @@ export function recordIn(input: MovementInput) {
  */
 export function recordOut(input: MovementInput) {
   return postMovement(input, "OUT");
+}
+
+/**
+ * Record an IN within the caller's transaction `tx` — for operations that must
+ * atomically bundle stock with other writes (e.g. a collection's Angkat Rak lifts).
+ */
+export function recordInTx(tx: Tx, input: MovementInput) {
+  return postMovementTx(tx, input, "IN");
+}
+
+/** Record an OUT within the caller's transaction `tx`. Rejects an oversell. */
+export function recordOutTx(tx: Tx, input: MovementInput) {
+  return postMovementTx(tx, input, "OUT");
 }
 
 /** Current balances (one row per touched SKU) for a warehouse, with Type grade. */

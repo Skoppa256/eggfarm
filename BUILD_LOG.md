@@ -4,18 +4,24 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 3 + WITA fix)
+## CURRENT STATUS (updated after Slice 4)
 
-- **Slices complete & committed:** Slice 1 (warehouse ledger), Slice 2 (auth, users, roles), a
-  refactor (`enteredById` FK to User), Slice 3 (config & master data), and a fix making the
-  business day WITA (Asia/Makassar) — resolves A6.
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **35/35 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 4 (collection input) — depends on Slices 1 & 3.
+- **Slices complete & committed:** Slice 1 (warehouse ledger), Slice 2 (auth), a refactor
+  (`enteredById` FK), Slice 3 (config & master data), a WITA business-day fix (A6), and
+  Slice 4 (collection input).
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **42/42 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 5 (grading) — depends on Slices 1, 3, 4.
+- **⚠️ WIB vs WITA — please confirm.** Your last two prompts said both "WITA (Asia/Makassar,
+  UTC+8)" (with full rationale) and, in passing, "the WIB fix". I implemented **WITA / UTC+8**
+  per the detailed spec (`src/lib/dates.ts`, committed `b1b00df`). WIB is UTC+7 (Jakarta). If the
+  farm is actually on WIB, change `WITA_OFFSET_MS` to `7 * …` and the two boundary assertions in
+  `dates.test.ts` — it's a one-line offset + test update.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
   in `.next`; `tsconfig.json` now excludes that pattern so `tsc` stays green.
 
 ### Migrations (apply in order; `pnpm test` and `pnpm db:deploy` do this for you)
-1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` · 4. `slice3_config_master_data`.
+1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` ·
+4. `slice3_config_master_data` · 5. `slice4_collection_input`.
 If a migration ever fails mid-way on the **test** DB (e.g. a made-required column with old NULLs),
 resolve with `DATABASE_URL=<test-url> pnpm exec prisma migrate resolve --rolled-back <name>` then re-run.
 
@@ -65,6 +71,14 @@ pnpm db:studio               # prisma studio
 
 ### Needs your review
 - **Nothing blocking.** No flock/HD%/FCR/feed math yet.
+- **WIB vs WITA** — see the ⚠️ in CURRENT STATUS. Implemented **WITA / UTC+8** per your
+  detailed spec; confirm if the farm is really WIB / UTC+7.
+- **Collection units (Slice 4).** Good/Retak/Lunak/Kosong are entered in **pcs** (FR-07 says
+  "all in pcs"); **Angkat Rak is entered in rak** (whole racks) and converted ×30 to pcs.
+  Change the collection form if counts should also accept rak. (Assumption A9.)
+- **Editing a collection downward** posts a compensating Angkat Rak **OUT**; if that stock was
+  already dispatched/sold, the edit is rejected by the ledger (can't go negative). That's the
+  safe behavior, but flag if you'd prefer a different policy. (Assumption A10.)
 - **A6 — RESOLVED.** The business day is now WITA (Asia/Makassar, UTC+8, no DST):
   `toBusinessDate` / `businessToday` in `src/lib/dates.ts` are the single source of
   truth, and Slice 3's mapping/batch date logic uses them. Timestamps stay UTC;
@@ -81,6 +95,50 @@ pnpm db:studio               # prisma studio
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
   (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
 - **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Slice 4 — Collection input ✅
+
+**Goal (BUILD_PLAN / SRS §3.2):** per-batch collection per (kandang, business date,
+batch); Angkat Rak split by Type posts to the ledger on save; duplicate → edit.
+
+### What was built
+- **Schema** → migration #5: `CollectionRecord` (Good/Retak/Lunak/Kosong pcs,
+  Type-agnostic; `@@unique(farmhouseId, date, batchNumber)`; `maxBatchesAtEntry`
+  snapshot, write-once §5.3) + `AngkatRakLift` (one row per Type, pcs).
+- **ledger.ts made transaction-aware.** Extracted `postMovementTx(tx, …)`; added
+  exported `recordInTx` / `recordOutTx`. This lets a caller (the collection save)
+  bundle the record + its Angkat Rak postings in ONE `$transaction` — atomic — while
+  ledger.ts remains the ONLY writer of stock (rule 5.4) and each movement + balance
+  still commit together (rule 5.1). Standalone `recordIn`/`recordOut` unchanged.
+- **collections.ts:** `createCollection` resolves the warehouse + max batches for the
+  business date (via `resolveWarehouseId`/`resolveMaxBatches`), validates the batch,
+  snapshots the max, and posts each lift as SKU (ANGKAT_RAK, Type) IN to the kandang's
+  warehouse; the four counts never touch stock. `updateCollection` reconciles lifts by
+  **delta** — a positive delta appends an IN, a negative delta an OUT — never rewriting
+  the original movements (rule 5.1); it deletes/updates/creates the lift rows to match.
+  The identity (kandang/date/batch) and `maxBatchesAtEntry` are immutable on edit.
+  Plus `findCollection` / `listCollections`.
+- **Zod schema + role-gated actions** (requireRole first, rule 5.5; Owner rejected):
+  counts parsed via Zod, Angkat Rak lifts read from dynamic `rak_<typeId>` fields and
+  converted rak → pcs.
+- **UI:** `/collections` — pick kandang + business date, then batch slots up to the
+  effective max (each a create or edit form: counts, Angkat Rak-in-rak per Type,
+  remarks), showing the destination warehouse. Nav link for Admin/Superadmin.
+- **Tests (7 new, 42 total):** Angkat-Rak-by-Type posts the right per-SKU pcs to the
+  right warehouse; a both-Types lift = 2 movements; counts don't stock; duplicate
+  prevention (+ findCollection returns the existing); edit reconciles by delta across
+  +/−/remove without double-posting; batch max honors the business date's effective
+  config (incl. a next-day change); Owner rejected on the action.
+
+### Key decisions
+- **Delta reconciliation on edit**, using IN/OUT movements (not CORRECTION — that's the
+  supervised, reason-gated path in Slice 6). Keeps the ledger append-only and truthful.
+- **rak vs pcs:** counts in pcs (FR-07), Angkat Rak in rak (see A9).
+
+### Test status
+`pnpm test` → **42 passed** (11 files). `tsc`, `eslint`, `next build` all clean.
 
 ---
 

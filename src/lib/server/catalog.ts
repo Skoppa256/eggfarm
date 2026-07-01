@@ -28,3 +28,10 @@ export function listGradeTypes() {
     orderBy: { sortOrder: "asc" },
   });
 }
+
+export function listActiveFarmhouses() {
+  return prisma.farmhouse.findMany({
+    where: { status: RecordStatus.ACTIVE },
+    orderBy: { code: "asc" },
+  });
+}

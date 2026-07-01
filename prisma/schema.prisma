@@ -81,6 +81,7 @@ model GradeType {
 
   warehouseStocks WarehouseStock[]
   stockMovements  StockMovement[]
+  angkatRakLifts  AngkatRakLift[]
 }
 
 /// A storage location for graded egg stock. Minimal in Slice 1; low-stock
@@ -169,10 +170,11 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  sessions        Session[]
-  stockMovements  StockMovement[]
-  mappingChanges  FarmhouseWarehouseMapping[]
-  batchChanges    FarmhouseBatchSetting[]
+  sessions          Session[]
+  stockMovements    StockMovement[]
+  mappingChanges    FarmhouseWarehouseMapping[]
+  batchChanges      FarmhouseBatchSetting[]
+  collectionRecords CollectionRecord[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -207,6 +209,7 @@ model Farmhouse {
 
   warehouseMappings FarmhouseWarehouseMapping[]
   batchSettings     FarmhouseBatchSetting[]
+  collectionRecords CollectionRecord[]
 }
 
 /// Effective-dated farmhouse→warehouse mapping (SRS §7 "Mapping Log"). Append-only:
@@ -256,4 +259,51 @@ model MeasurementUnit {
   sortOrder     Int          @default(0)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Collection input (Slice 4)
+// ---------------------------------------------------------------------------
+
+/// One batch's raw egg count for a kandang on a business date (SRS §3.2).
+/// Type-agnostic counts (pcs); Angkat Rak is split by Type in AngkatRakLift.
+/// Only Angkat Rak posts to stock (via ledger.ts); the counts feed grading (Slice 5).
+/// `maxBatchesAtEntry` is the effective max-batches snapshot, frozen at entry
+/// (write-once, CLAUDE.md §5.3).
+model CollectionRecord {
+  id                String   @id @default(cuid())
+  farmhouseId       String
+  date              DateTime @db.Date // business date (WITA)
+  batchNumber       Int
+  goodEggs          Int      @default(0) // pcs, Type-agnostic
+  telurRetak        Int      @default(0) // pcs
+  telurLunak        Int      @default(0) // pcs
+  telurKosong       Int      @default(0) // pcs (tracking only; never stocked)
+  remarks           String?
+  maxBatchesAtEntry Int // frozen snapshot of the kandang's effective max batches
+  enteredById       String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  farmhouse      Farmhouse       @relation(fields: [farmhouseId], references: [id])
+  enteredBy      User            @relation(fields: [enteredById], references: [id])
+  angkatRakLifts AngkatRakLift[]
+
+  @@unique([farmhouseId, date, batchNumber]) // duplicate prevention (SRS FR-09)
+  @@index([farmhouseId, date])
+}
+
+/// One Angkat Rak lift within a collection, for a single Grade by Type. Quantity in
+/// pcs. On collection save each lift posts an IN movement to the kandang's warehouse
+/// as SKU (ANGKAT_RAK, typeGrade) — via ledger.ts only (rule 5.4).
+model AngkatRakLift {
+  id                 String @id @default(cuid())
+  collectionRecordId String
+  typeGradeId        String
+  quantity           Int // pcs
+
+  collectionRecord CollectionRecord @relation(fields: [collectionRecordId], references: [id], onDelete: Cascade)
+  gradeType        GradeType        @relation(fields: [typeGradeId], references: [id])
+
+  @@unique([collectionRecordId, typeGradeId]) // one row per Type per collection
 }

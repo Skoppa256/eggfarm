@@ -9,6 +9,7 @@ import { logoutAction } from "./actions";
 function navLinks(role: Role): { href: string; label: string }[] {
   const links = [{ href: "/warehouse", label: "Warehouse" }];
   if (role === "ADMIN" || role === "SUPERADMIN") {
+    links.push({ href: "/collections", label: "Collection" });
     links.push({ href: "/farmhouses", label: "Farmhouses" });
     links.push({ href: "/warehouses", label: "Warehouses" });
   }
