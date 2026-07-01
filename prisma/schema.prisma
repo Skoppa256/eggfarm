@@ -79,6 +79,18 @@ enum SalesStatus {
   VOIDED
 }
 
+/// Flock lifecycle. A flock ends once all its placements have ended (SRS §3.9).
+enum FlockStatus {
+  ACTIVE
+  ENDED
+}
+
+/// Placement lifecycle. Ending a placement (fully culled/sold) frees its kandang.
+enum PlacementStatus {
+  ACTIVE
+  ENDED
+}
+
 // ---------------------------------------------------------------------------
 // Master data
 // ---------------------------------------------------------------------------
@@ -197,6 +209,7 @@ model User {
   gradingRecords    GradingRecord[]
   salesTransactions SalesTransaction[] @relation("SalesEnteredBy")
   voidedSales       SalesTransaction[] @relation("SalesVoidedBy")
+  createdFlocks     Flock[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -233,6 +246,7 @@ model Farmhouse {
   batchSettings     FarmhouseBatchSetting[]
   collectionRecords CollectionRecord[]
   gradingRecords    GradingRecord[]
+  placements        Placement[]
 }
 
 /// Effective-dated farmhouse→warehouse mapping (SRS §7 "Mapping Log"). Append-only:
@@ -459,4 +473,67 @@ model SalesLineItem {
   gradeType   GradeType        @relation(fields: [typeGradeId], references: [id])
 
   @@index([transactionId])
+}
+
+// ---------------------------------------------------------------------------
+// Flock & placement lifecycle (Slice 8)
+// ---------------------------------------------------------------------------
+
+/// One chick-in delivery: shared strain, chick-in date, and placement age (days at
+/// chick-in). May populate one or more kandang as separate placements (SRS §3.9).
+/// Created by Superadmin only.
+model Flock {
+  id           String      @id @default(cuid())
+  strain       String
+  chickInDate  DateTime    @db.Date // business date (WITA)
+  placementAge Int // days at chick-in (shared across the flock)
+  status       FlockStatus @default(ACTIVE)
+  createdById  String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  createdBy  User        @relation(fields: [createdById], references: [id])
+  placements Placement[]
+}
+
+/// A flock's portion in one kandang, with its own Populasi Awal and its own daily
+/// HIDUP ledger. One ACTIVE placement per kandang at a time (enforced in the service).
+/// Ending it (endDate set) frees the kandang; history is retained.
+model Placement {
+  id          String          @id @default(cuid())
+  flockId     String
+  farmhouseId String
+  populasiAwal Int // initial hen count (per placement)
+  startDate   DateTime        @db.Date // = flock chick-in date
+  endDate     DateTime?       @db.Date
+  status      PlacementStatus @default(ACTIVE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  flock          Flock            @relation(fields: [flockId], references: [id])
+  farmhouse      Farmhouse        @relation(fields: [farmhouseId], references: [id])
+  hidupSnapshots HidupSnapshot[]
+
+  @@index([farmhouseId, status])
+  @@index([flockId])
+}
+
+/// Running live-hen count (HIDUP) snapshot for a placement on a business date =
+/// previous HIDUP − that day's MATI − AFKIR (SRS §3.9). Seeded at chick-in with
+/// hidup = Populasi Awal. Write-once per (placement, date) — the running value is
+/// persisted, not recomputed from birth (CLAUDE.md §5.3). MATI/AFKIR entry via the
+/// daily record is Slice 9; this is the model + helper it builds on.
+model HidupSnapshot {
+  id          String   @id @default(cuid())
+  placementId String
+  date        DateTime @db.Date
+  mati        Int      @default(0)
+  afkir       Int      @default(0)
+  hidup       Int
+  createdAt   DateTime @default(now())
+
+  placement Placement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+
+  @@unique([placementId, date])
+  @@index([placementId, date])
 }

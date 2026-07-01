@@ -4,16 +4,20 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 7)
+## CURRENT STATUS (updated after Slice 8)
 
-- **Slices complete & committed:** Slices 1–6 + refactor + WITA fix, and **Slice 7
-  (buyers + sales & dispatch)**.
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **66/66 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 8 (flock & placement lifecycle) — depends on Slices 2 & 3.
+- **Slices complete & committed:** Slices 1–6 + refactor + WITA fix, Slice 7
+  (buyers + sales & dispatch), and **Slice 8 (flock & placement lifecycle)**.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **76/76 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 9 (daily farmhouse recording) — MATI/AFKIR entry drives HIDUP
+  via the write-once `applyDailyMortality` helper built this slice; feed/egg buckets, HD%/FCR.
 - **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
   (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
-  in `.next`; `tsconfig.json` now excludes that pattern so `tsc` stays green.
+  in `.next`; `tsconfig.json` now excludes that pattern so `tsc` stays green. **iCloud has also
+  been observed restoring git-deleted files as untracked** (a Slice-6-deleted
+  `test/warehouse-action.test.ts` reappeared and broke the test run). Before each commit, check
+  `git status -s | grep '^??'` for unexpected untracked files and `rm` any stale resurrected ones.
 - **Benign warning:** the pg driver adapter prints a `DeprecationWarning` ("client.query()
   … already executing") during transaction-heavy tests. It's from `@prisma/adapter-pg`/`pg`,
   not our code; tests are green and stable. Revisit at the next pg/Prisma upgrade.
@@ -21,7 +25,7 @@ Running log of what was built, slice by slice. Newest summary on top.
 ### Migrations (apply in order; `pnpm test` and `pnpm db:deploy` do this for you)
 1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` ·
 4. `slice3_config_master_data` · 5. `slice4_collection_input` · 6. `slice5_grading` ·
-7. `slice6_low_stock_thresholds` · 8. `slice7_buyers_sales`.
+7. `slice6_low_stock_thresholds` · 8. `slice7_buyers_sales` · 9. `slice8_flock_placement`.
 If a migration ever fails mid-way on the **test** DB (e.g. a made-required column with old NULLs),
 resolve with `DATABASE_URL=<test-url> pnpm exec prisma migrate resolve --rolled-back <name>` then re-run.
 
@@ -70,10 +74,28 @@ pnpm db:studio               # prisma studio
 ```
 
 ### Needs your review
-- **Nothing blocking.** No flock/HD%/FCR/feed math yet.
-- **Void reason ≥ 3 chars (Slice 7).** The SRS says a void needs a "mandatory reason" without a
-  length; I required ≥ 3 (corrections are ≥ 20 by explicit spec). Change `voidSaleSchema` /
-  `voidSale` if you want a different floor. (Assumption A16.)
+- **Nothing blocking.** No HD%/FCR/feed math yet (those land in Slice 9); flock
+  HARI/MINGGU/HIDUP now exist.
+- **MINGGU = floor(HARI / 7) (Slice 8).** SRS §3.9 gives `MINGGU = HARI / 7`; I read this as the
+  integer week index (`Math.floor`), so HARI 113 → MINGGU 16, HARI 120 → 17. Change `computeMinggu`
+  in `src/lib/flock.ts` if a 1-based or rounded week is wanted. (Assumption A19.)
+- **No flock editing after chick-in (Slice 8).** A flock's strain / chick-in date / placement age
+  and its set of placements are fixed at creation; the only lifecycle mutation is Superadmin
+  end-placement. Add an edit path if correcting a mis-entered chick-in is needed. (Assumption A20.)
+- **Chick-in-day mortality not supported (Slice 8).** The seed HIDUP snapshot occupies the
+  (placement, chick-in date) slot at Populasi Awal, and `applyDailyMortality` requires a prior
+  snapshot strictly before the entry date — so the first MATI/AFKIR can be recorded from the day
+  after chick-in onward, not on day 0. Flag if day-0 deaths must be recordable. (Assumption A21.)
+- **`HidupSnapshot` is a new model, not in SRS §7 (Slice 8).** Added to persist the running HIDUP
+  write-once (rule 5.3) as one row per placement-day, per your instruction — seeded at chick-in,
+  read latest-≤-date, never recomputed. The SRS §7 data model didn't list it. (Assumption A22.)
+- **One active placement per kandang is enforced in the service, not a DB constraint (Slice 8).**
+  The check runs inside `createFlock`'s transaction (Prisma can't express a partial unique index
+  declaratively). A raw partial index (`… WHERE status = 'ACTIVE'`) could be added later for
+  defense-in-depth. (Assumption A23.)
+- **Void reason ≥ 10 chars (Slice 7, revised per your A16 review).** The SRS says a void needs a
+  "mandatory reason" without a length. Bumped from ≥ 3 to **≥ 10** in `voidSaleSchema`, `voidSale`,
+  and the void form (`minLength`), with a test. Corrections remain ≥ 20 by explicit spec. (Assumption A16.)
 - **Sales line entry uses growable rows (Slice 7).** The new-sale form starts with 3 rows and an
   "Add line" button; empty rows are ignored on submit. No per-row delete (a UX nicety); duplicate
   SKUs across lines are allowed and validated against the aggregate. (Assumption A17.)
@@ -120,6 +142,75 @@ pnpm db:studio               # prisma studio
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
   (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
 - **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Slice 8 — Flock & placement lifecycle ✅
+
+**Goal (BUILD_PLAN / SRS §3.9 / §2 / §7, CLAUDE.md §6 "Flock & placement"):** Superadmin
+chick-in of a flock (a chick-in delivery) into one or more kandang, each kandang a
+Placement with its own Populasi Awal and its own running HIDUP; end-placement lifecycle
+that frees the kandang and ends the flock when its last placement ends; the flock-age
+derivations (HARI/MINGGU/HIDUP). Daily MATI/AFKIR *entry* is Slice 9 — this slice builds
+the model + the write-once HIDUP helper it will call.
+
+### What was built
+- **Schema** → migration #9 `slice8_flock_placement`: `FlockStatus`/`PlacementStatus`
+  (ACTIVE/ENDED); `Flock` (strain, `chickInDate` `@db.Date`, `placementAge` = days at
+  chick-in, status, `createdById` FK); `Placement` (flock, farmhouse, `populasiAwal`,
+  start/end dates, status; `@@index([farmhouseId, status])`); **`HidupSnapshot`** (per
+  placement-day: `mati`/`afkir`/`hidup`, `@@unique([placementId, date])`, cascade-deletes
+  with its placement) — the write-once running-HIDUP store (rule 5.3). Back-relations
+  `User.createdFlocks` and `Farmhouse.placements`.
+- **`src/lib/flock.ts`** (pure, shared) — `computeHari(placementAge, chickInDate, asOf)`
+  `= placementAge + daysBetween(chickInDate, asOf)` (age shared across the whole flock) and
+  `computeMinggu(hari) = Math.floor(hari / 7)`. Added `daysBetween` to `src/lib/dates.ts`.
+- **`src/lib/server/flocks.ts`** (service; Superadmin-gated at the action layer):
+  - `createFlock(input, ctx)` — validates placement age (int ≥ 0), ≥ 1 placement, each
+    Populasi Awal (int > 0), no duplicate kandang, and every kandang exists + is ACTIVE;
+    then in ONE `$transaction` (with `TX_OPTIONS`) re-checks **one ACTIVE placement per
+    kandang** (occupied → `ConflictError`), creates the flock, and per placement creates the
+    `Placement` + seeds a HIDUP snapshot of `hidup = populasiAwal` on the chick-in date.
+  - `endPlacement(placementId, endDate)` — validates end ≥ chick-in; in a transaction, an
+    atomic ACTIVE-guarded `updateMany` flips the placement to ENDED (idempotent — a repeat
+    end throws), then ends the flock iff no ACTIVE placements remain. Frees the kandang for
+    re-population; prior placements + their HIDUP snapshots are retained.
+  - `resolveHidup(placementId, asOf)` — the running HIDUP at end of `asOf` = the latest
+    snapshot with `date ≤ asOf` (read, never recomputed); `null` before chick-in.
+  - `applyDailyMortality(placementId, date, mati, afkir)` — the Slice-9 building block:
+    new HIDUP = (latest snapshot strictly **before** `date`) − MATI − AFKIR; rejects
+    non-integers/negatives, going below zero (names the constraint), a missing prior
+    snapshot, and overwriting an existing snapshot (write-once).
+  - `listFlocks` / `getFlock` / `listFreeFarmhouses` (active kandang with no ACTIVE placement).
+- **Zod schemas** (`schemas/flocks.ts`) + **Superadmin-only actions** (`requireRole("SUPERADMIN")`
+  first line, rule 5.5; Owner *and Admin* rejected): `createFlockAction` (reads the dynamic
+  `placement.<i>.*` rows, skips blanks, redirects to the new flock on success),
+  `endPlacementAction`. **UI:** `/flocks` (list, ACTIVE/ENDED), `/flocks/new` (Superadmin
+  chick-in form — header + growable per-kandang placement rows from the free-kandang list),
+  `/flocks/[id]` (flock HARI/MINGGU today, per-placement HIDUP-today, Superadmin end form);
+  nav link for Admin/Superadmin.
+- **Tests (10 new, 76 total):** flock spanning 2 kandang seeds HIDUP = Populasi Awal per
+  placement (null before chick-in); occupied-kandang chick-in rejected; HARI/MINGGU worked
+  examples (placement age 113, chick-in 2026-07-01 → HARI 113/120/127, MINGGU 16/17/18);
+  HIDUP carry-forward 1000→993→990→980 across a gap, write-once + over-cull rejected; ending
+  one placement keeps the flock ACTIVE, frees K1 for a new flock, and retains the old HIDUP;
+  ending the last placement ends the flock and a double-end is rejected; a non-Superadmin
+  (ADMIN) is rejected on both create and end, and a Superadmin chick-in creates
+  flock + placement + seed snapshot through the action.
+
+### Key decisions
+- **HIDUP as a write-once per-placement-day snapshot (rule 5.3), not a recompute.** A
+  dedicated `HidupSnapshot` table seeded at chick-in; `resolveHidup` reads the latest
+  snapshot ≤ date and `applyDailyMortality` carries forward from the latest snapshot < date
+  and refuses to overwrite — so a formula/data change never silently rewrites flock history.
+- **HARI/MINGGU are pure functions of age + business days**, unit-tested against worked
+  examples; MINGGU = `floor(HARI/7)` (assumption A19). Age is flock-wide; HIDUP is per placement.
+- **One-active-placement-per-kandang enforced inside the create transaction** (assumption
+  A23); **end-placement is idempotent** via a status-guarded `updateMany`, mirroring the void
+  pattern from Slice 7.
+
+### Test status
+`pnpm test` → **76 passed** (20 files), stable across runs. `tsc`, `eslint`, `next build` all clean.
 
 ---
 

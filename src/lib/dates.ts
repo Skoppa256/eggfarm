@@ -41,3 +41,8 @@ export function businessToday(): Date {
 export function formatDateOnly(d: Date): string {
   return toDateOnly(d).toISOString().slice(0, 10);
 }
+
+/** Whole days from `from` to `to` (both taken as date-only). Negative if `to` is earlier. */
+export function daysBetween(from: Date, to: Date): number {
+  return Math.round((toDateOnly(to).getTime() - toDateOnly(from).getTime()) / 86_400_000);
+}
