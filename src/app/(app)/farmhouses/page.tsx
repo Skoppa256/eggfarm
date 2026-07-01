@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { todayDateOnly } from "@/lib/dates";
+import { businessToday } from "@/lib/dates";
 import { getSessionUser } from "@/lib/server/auth";
 import { listWarehouses as listActiveWarehouses } from "@/lib/server/catalog";
 import { listFarmhousesWithCurrent } from "@/lib/server/farmhouses";
@@ -21,7 +21,7 @@ export default async function FarmhousesPage() {
   if (user.role === "OWNER") redirect("/warehouse"); // read-only role
 
   const [farmhouses, warehouses] = await Promise.all([
-    listFarmhousesWithCurrent(todayDateOnly()),
+    listFarmhousesWithCurrent(businessToday()),
     listActiveWarehouses(),
   ]);
 

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { RecordStatus } from "@/generated/prisma/enums";
-import { addDays, toDateOnly } from "@/lib/dates";
+import { addDays, toBusinessDate } from "@/lib/dates";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { prisma } from "@/lib/server/db";
 
@@ -38,7 +38,7 @@ async function assertWarehouseActive(warehouseId: string): Promise<void> {
  */
 export async function resolveWarehouseId(farmhouseId: string, asOf: Date): Promise<string | null> {
   const mapping = await prisma.farmhouseWarehouseMapping.findFirst({
-    where: { farmhouseId, effectiveFrom: { lte: toDateOnly(asOf) } },
+    where: { farmhouseId, effectiveFrom: { lte: toBusinessDate(asOf) } },
     orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }],
   });
   return mapping?.warehouseId ?? null;
@@ -50,7 +50,7 @@ export async function resolveWarehouseId(farmhouseId: string, asOf: Date): Promi
  */
 export async function resolveMaxBatches(farmhouseId: string, asOf: Date): Promise<number | null> {
   const setting = await prisma.farmhouseBatchSetting.findFirst({
-    where: { farmhouseId, effectiveFrom: { lte: toDateOnly(asOf) } },
+    where: { farmhouseId, effectiveFrom: { lte: toBusinessDate(asOf) } },
     orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }],
   });
   return setting?.maxBatchesPerDay ?? null;
@@ -58,7 +58,7 @@ export async function resolveMaxBatches(farmhouseId: string, asOf: Date): Promis
 
 /** Farmhouses with their current (as of `asOf`) warehouse and max-batches, for lists. */
 export function listFarmhousesWithCurrent(asOf: Date) {
-  const on = toDateOnly(asOf);
+  const on = toBusinessDate(asOf);
   return prisma.farmhouse.findMany({
     orderBy: [{ status: "asc" }, { code: "asc" }],
     include: {
@@ -97,7 +97,7 @@ export async function createFarmhouse(input: {
     throw new ConflictError(`Farmhouse code "${input.code}" is already taken.`);
   }
 
-  const effectiveFrom = toDateOnly(input.today);
+  const effectiveFrom = toBusinessDate(input.today);
   return prisma.$transaction(async (tx) => {
     const farmhouse = await tx.farmhouse.create({
       data: { name: input.name, code: input.code },
@@ -143,7 +143,7 @@ export async function changeWarehouseMapping(input: {
     data: {
       farmhouseId: input.farmhouseId,
       warehouseId: input.warehouseId,
-      effectiveFrom: toDateOnly(input.effectiveFrom),
+      effectiveFrom: toBusinessDate(input.effectiveFrom),
       changedById: input.changedById,
     },
   });
@@ -169,7 +169,8 @@ export async function changeMaxBatches(input: {
     data: {
       farmhouseId: input.farmhouseId,
       maxBatchesPerDay: input.maxBatchesPerDay,
-      effectiveFrom: addDays(input.today, 1), // takes effect the next day
+      // Next business day in WITA (today + 1), so it takes effect tomorrow.
+      effectiveFrom: addDays(toBusinessDate(input.today), 1),
       changedById: input.changedById,
     },
   });

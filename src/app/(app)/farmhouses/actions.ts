@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { RecordStatus } from "@/generated/prisma/enums";
 import type { ActionResult } from "@/lib/action-result";
-import { todayDateOnly } from "@/lib/dates";
+import { businessToday } from "@/lib/dates";
 import { AppError } from "@/lib/errors";
 import {
   changeBatchSchema,
@@ -44,7 +44,7 @@ export async function createFarmhouseAction(
     const farmhouse = await createFarmhouse({
       ...parsed.data,
       changedById: user.id,
-      today: todayDateOnly(),
+      today: businessToday(),
     });
     revalidatePath(PATH);
     return { ok: true, message: `Created farmhouse ${farmhouse.code}.` };
@@ -68,7 +68,7 @@ export async function changeMappingAction(formData: FormData): Promise<void> {
     farmhouseId: parsed.data.farmhouseId,
     warehouseId: parsed.data.warehouseId,
     changedById: user.id,
-    effectiveFrom: todayDateOnly(),
+    effectiveFrom: businessToday(),
   });
   revalidatePath(PATH);
 }
@@ -87,7 +87,7 @@ export async function changeBatchAction(formData: FormData): Promise<void> {
     farmhouseId: parsed.data.farmhouseId,
     maxBatchesPerDay: parsed.data.maxBatchesPerDay,
     changedById: user.id,
-    today: todayDateOnly(),
+    today: businessToday(),
   });
   revalidatePath(PATH);
 }
