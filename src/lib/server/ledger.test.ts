@@ -11,12 +11,13 @@ beforeEach(resetDb);
 describe("ledger", () => {
   // CLAUDE.md §8 (a): a movement and its balance stay in lockstep.
   it("keeps the append-only ledger and the balance projection in lockstep", async () => {
-    const { warehouseId, typeGradeId } = await createSkuFixture();
+    const { warehouseId, typeGradeId, userId } = await createSkuFixture();
     const sku = {
       warehouseId,
       sizeHealthGrade: SizeHealthGrade.A,
       typeGradeId,
       sourceType: SourceType.ADJUSTMENT,
+      enteredById: userId,
     } as const;
 
     await recordIn({ ...sku, quantity: 100 });
@@ -46,12 +47,13 @@ describe("ledger", () => {
 
   // CLAUDE.md §8 (b): an oversell is rejected atomically with no partial write.
   it("rejects an oversell atomically, leaving balance and ledger untouched", async () => {
-    const { warehouseId, typeGradeId } = await createSkuFixture();
+    const { warehouseId, typeGradeId, userId } = await createSkuFixture();
     const sku = {
       warehouseId,
       sizeHealthGrade: SizeHealthGrade.B,
       typeGradeId,
       sourceType: SourceType.ADJUSTMENT,
+      enteredById: userId,
     } as const;
 
     await recordIn({ ...sku, quantity: 40 });
@@ -71,12 +73,13 @@ describe("ledger", () => {
   });
 
   it("allows draining a balance to exactly zero", async () => {
-    const { warehouseId, typeGradeId } = await createSkuFixture();
+    const { warehouseId, typeGradeId, userId } = await createSkuFixture();
     const sku = {
       warehouseId,
       sizeHealthGrade: SizeHealthGrade.A,
       typeGradeId,
       sourceType: SourceType.ADJUSTMENT,
+      enteredById: userId,
     } as const;
 
     await recordIn({ ...sku, quantity: 30 });
@@ -87,7 +90,7 @@ describe("ledger", () => {
   });
 
   it("rejects an oversell on a brand-new SKU without creating a stray balance row", async () => {
-    const { warehouseId, typeGradeId } = await createSkuFixture();
+    const { warehouseId, typeGradeId, userId } = await createSkuFixture();
 
     await expect(
       recordOut({
@@ -95,6 +98,7 @@ describe("ledger", () => {
         sizeHealthGrade: SizeHealthGrade.MINI,
         typeGradeId,
         sourceType: SourceType.ADJUSTMENT,
+        enteredById: userId,
         quantity: 1,
       }),
     ).rejects.toBeInstanceOf(InsufficientStockError);
@@ -106,12 +110,13 @@ describe("ledger", () => {
 
   // Rule 5.2: the FOR UPDATE row lock prevents two concurrent OUTs from overselling.
   it("serializes concurrent OUTs so the same stock can't be sold twice", async () => {
-    const { warehouseId, typeGradeId } = await createSkuFixture();
+    const { warehouseId, typeGradeId, userId } = await createSkuFixture();
     const sku = {
       warehouseId,
       sizeHealthGrade: SizeHealthGrade.C,
       typeGradeId,
       sourceType: SourceType.ADJUSTMENT,
+      enteredById: userId,
     } as const;
 
     await recordIn({ ...sku, quantity: 50 });

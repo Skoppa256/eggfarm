@@ -138,14 +138,16 @@ model StockMovement {
   preQuantity       Int // balance before this movement
   postQuantity      Int // balance after this movement (== WarehouseStock.currentQuantity)
   date              DateTime        @default(now()) // business date of the movement
-  enteredById       String? // FK to User added in Slice 2
+  enteredById       String // who entered it (the authenticated user)
   createdAt         DateTime        @default(now()) // immutable audit timestamp
 
   warehouse Warehouse @relation(fields: [warehouseId], references: [id])
   gradeType GradeType @relation(fields: [typeGradeId], references: [id])
+  enteredBy User      @relation(fields: [enteredById], references: [id])
 
   @@index([warehouseId, date])
   @@index([warehouseId, sizeHealthGrade, typeGradeId])
+  @@index([enteredById])
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +168,8 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  sessions Session[]
+  sessions       Session[]
+  stockMovements StockMovement[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the

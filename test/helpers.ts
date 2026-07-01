@@ -13,10 +13,14 @@ export async function resetDb(): Promise<void> {
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
 }
 
-/** Create one warehouse + one grade type and return their ids for ledger tests. */
+/**
+ * Create one warehouse, one grade type, and one user, returning their ids for
+ * ledger tests. Every movement needs an enterer (enteredById is a required FK).
+ */
 export async function createSkuFixture(): Promise<{
   warehouseId: string;
   typeGradeId: string;
+  userId: string;
 }> {
   const warehouse = await prisma.warehouse.create({
     data: { name: "Test Warehouse", code: "WH-TEST" },
@@ -24,5 +28,13 @@ export async function createSkuFixture(): Promise<{
   const gradeType = await prisma.gradeType.create({
     data: { name: "Normal", sortOrder: 1 },
   });
-  return { warehouseId: warehouse.id, typeGradeId: gradeType.id };
+  const user = await prisma.user.create({
+    data: {
+      name: "Tester",
+      username: "tester",
+      passwordHash: "x", // not exercised by ledger tests
+      role: "ADMIN",
+    },
+  });
+  return { warehouseId: warehouse.id, typeGradeId: gradeType.id, userId: user.id };
 }

@@ -39,8 +39,8 @@ export interface MovementInput extends SkuRef {
   unitUsed?: string;
   /** Free-text note; required (>= 20 chars) only for CORRECTION, gated elsewhere. */
   reason?: string | null;
-  /** Auditing: who entered it. Wired to the real user once auth lands (Slice 2). */
-  enteredById?: string | null;
+  /** Auditing: the authenticated user who entered it (FK to User, required). */
+  enteredById: string;
   /** Business date of the movement; defaults to now(). */
   date?: Date;
 }
@@ -118,7 +118,7 @@ async function postMovement(input: MovementInput, direction: Direction) {
         preQuantity,
         postQuantity,
         date: input.date ?? undefined,
-        enteredById: input.enteredById ?? null,
+        enteredById: input.enteredById,
       },
     });
   });
