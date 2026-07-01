@@ -4,21 +4,20 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 4)
+## CURRENT STATUS (updated after Slice 5)
 
-- **Slices complete & committed:** Slice 1 (warehouse ledger), Slice 2 (auth), a refactor
-  (`enteredById` FK), Slice 3 (config & master data), a WITA business-day fix (A6), and
-  Slice 4 (collection input).
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **42/42 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 5 (grading) — depends on Slices 1, 3, 4.
-- **Timezone: CONFIRMED WITA.** The farm is in Makassar → business day is Asia/Makassar
-  (WITA, UTC+8, no DST), implemented in `src/lib/dates.ts` (committed `b1b00df`). Settled.
+- **Slices complete & committed:** Slices 1–4 + refactor + WITA fix (see below), and
+  **Slice 5 (grading input)**.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **49/49 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 6 (warehouse views, corrections, thresholds) — depends on Slices 1 & 5.
+- **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
+  (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
   in `.next`; `tsconfig.json` now excludes that pattern so `tsc` stays green.
 
 ### Migrations (apply in order; `pnpm test` and `pnpm db:deploy` do this for you)
 1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` ·
-4. `slice3_config_master_data` · 5. `slice4_collection_input`.
+4. `slice3_config_master_data` · 5. `slice4_collection_input` · 6. `slice5_grading`.
 If a migration ever fails mid-way on the **test** DB (e.g. a made-required column with old NULLs),
 resolve with `DATABASE_URL=<test-url> pnpm exec prisma migrate resolve --rolled-back <name>` then re-run.
 
@@ -74,6 +73,14 @@ pnpm db:studio               # prisma studio
 - **Editing a collection downward** posts a compensating Angkat Rak **OUT**; if that stock was
   already dispatched/sold, the edit is rejected by the ledger (can't go negative). That's the
   safe behavior, but flag if you'd prefer a different policy. (Assumption A10.)
+- **Grading edit-after-submit (Slice 5).** Per your spec, a submitted batch can be edited and
+  re-submitted; stock reconciles by delta (append IN/OUT). This extends FR-14's "already graded →
+  locked" (which forbade re-grading). A downward edit that the warehouse can't cover (stock
+  already sold) is rejected by the ledger, same as A10. (Assumption A11.)
+- **Grading reconcile is live, not snapshotted (Slice 5).** Graded-total ≤ available (Good Eggs −
+  Angkat Rak) is validated against the collection at submit/edit time. If the collection is edited
+  *after* grading, grading is not auto-re-validated — that cross-check surfaces in the daily record
+  (Slice 9). No extra write-once field was needed on the grading record. (Assumption A12.)
 - **A6 — RESOLVED.** The business day is now WITA (Asia/Makassar, UTC+8, no DST):
   `toBusinessDate` / `businessToday` in `src/lib/dates.ts` are the single source of
   truth, and Slice 3's mapping/batch date logic uses them. Timestamps stay UTC;
@@ -90,6 +97,51 @@ pnpm db:studio               # prisma studio
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
   (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
 - **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Slice 5 — Grading input ✅
+
+**Goal (BUILD_PLAN / SRS §3.3):** grade each batch into Egg SKUs (Size&Health × Type);
+Draft holds no stock, Submit posts every line; batch-sequential; reconcile vs available.
+
+### What was built
+- **Schema** → migration #6: `GradingStatus` (DRAFT/SUBMITTED); `GradingRecord`
+  (kandang+date+batch unique, status, `linkedCollectionId`) + `GradingLineItem`
+  (Egg SKU = Size&Health × Type, pcs; unique per SKU).
+- **grades.ts:** `GRADEABLE_GRADES` (A++ … Lunak — excludes Angkat Rak, which bypasses
+  grading; KOSONG isn't in the enum) + `isPcsGrade` (Plastik/Lunak entered in pcs, the
+  rest in rak — FR-17).
+- **grading.ts:**
+  - `saveDraft` — writes line items, posts **no** stock. Blocked by the sequential
+    lock / missing collection; refuses to draft an already-submitted batch.
+  - `submitGrading` — validates the **reconcile total** (graded ≤ available = Good Eggs
+    − total Angkat Rak; over-entry rejected, naming the overage), writes line items, and
+    **reconciles stock by delta** per SKU (first submit posts fully from baseline 0; edit
+    posts only the differences — append IN/OUT, never rewrite), then sets SUBMITTED. All
+    in one `$transaction` via ledger.ts's tx-aware `recordInTx`/`recordOutTx` (rule 5.4).
+  - **Batch-sequential lock** (FR-15): batch N requires N−1 submitted; batch N also
+    requires its own collection (FR-14). `findGrading` / `listGradings` /
+    `availableFromCollection`.
+- **Zod schema + role-gated actions** (requireRole first, rule 5.5; Owner rejected);
+  grade cells read from dynamic `q:<typeId>:<grade>` fields, converted rak→pcs (pcs
+  grades pass through). UI: `/grading` — kandang+date selector → per-batch status/lock,
+  a Type × Size&Health grid, a **live reconcile counter** (graded vs available, red when
+  over), Save-draft / Submit; nav link.
+- **Tests (7 new, 49 total):** sequential lock + collection requirement; draft posts no
+  stock while submit posts every line per SKU to the right warehouse; over-entry
+  rejected; both-Types → per-SKU movements; post-submit edit reconciles by delta without
+  double-posting; Owner rejected on the action.
+
+### Key decisions
+- **Baseline for delta = the line items IF already SUBMITTED, else 0.** For a submitted
+  record the line items equal posted stock, so re-submit posts only the delta; a
+  draft→submit posts everything. Uniform and append-only (rule 5.1).
+- **Combined-total reconcile only** (per-Type cross-check is intentionally impossible —
+  SRS §2.3). See assumptions A11/A12.
+
+### Test status
+`pnpm test` → **49 passed** (13 files). `tsc`, `eslint`, `next build` all clean.
 
 ---
 

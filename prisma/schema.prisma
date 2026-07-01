@@ -65,6 +65,13 @@ enum Role {
   OWNER
 }
 
+/// Grading lifecycle. A DRAFT posts no stock; SUBMITTED has posted every line to
+/// the ledger and locks the batch (CLAUDE.md §6, SRS FR-19).
+enum GradingStatus {
+  DRAFT
+  SUBMITTED
+}
+
 // ---------------------------------------------------------------------------
 // Master data
 // ---------------------------------------------------------------------------
@@ -79,9 +86,10 @@ model GradeType {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  warehouseStocks WarehouseStock[]
-  stockMovements  StockMovement[]
-  angkatRakLifts  AngkatRakLift[]
+  warehouseStocks   WarehouseStock[]
+  stockMovements    StockMovement[]
+  angkatRakLifts    AngkatRakLift[]
+  gradingLineItems  GradingLineItem[]
 }
 
 /// A storage location for graded egg stock. Minimal in Slice 1; low-stock
@@ -175,6 +183,7 @@ model User {
   mappingChanges    FarmhouseWarehouseMapping[]
   batchChanges      FarmhouseBatchSetting[]
   collectionRecords CollectionRecord[]
+  gradingRecords    GradingRecord[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -210,6 +219,7 @@ model Farmhouse {
   warehouseMappings FarmhouseWarehouseMapping[]
   batchSettings     FarmhouseBatchSetting[]
   collectionRecords CollectionRecord[]
+  gradingRecords    GradingRecord[]
 }
 
 /// Effective-dated farmhouse→warehouse mapping (SRS §7 "Mapping Log"). Append-only:
@@ -288,6 +298,7 @@ model CollectionRecord {
   farmhouse      Farmhouse       @relation(fields: [farmhouseId], references: [id])
   enteredBy      User            @relation(fields: [enteredById], references: [id])
   angkatRakLifts AngkatRakLift[]
+  gradingRecords GradingRecord[]
 
   @@unique([farmhouseId, date, batchNumber]) // duplicate prevention (SRS FR-09)
   @@index([farmhouseId, date])
@@ -306,4 +317,48 @@ model AngkatRakLift {
   gradeType        GradeType        @relation(fields: [typeGradeId], references: [id])
 
   @@unique([collectionRecordId, typeGradeId]) // one row per Type per collection
+}
+
+// ---------------------------------------------------------------------------
+// Grading (Slice 5)
+// ---------------------------------------------------------------------------
+
+/// One batch's grading session (SRS §3.3). A DRAFT holds line items but posts no
+/// stock; on SUBMIT every line posts to the ledger as its Egg SKU IN and the batch
+/// is locked. Grading is batch-sequential: batch N requires N-1 submitted.
+model GradingRecord {
+  id                 String        @id @default(cuid())
+  farmhouseId        String
+  date               DateTime      @db.Date // business date (WITA)
+  batchNumber        Int
+  status             GradingStatus @default(DRAFT)
+  linkedCollectionId String?
+  remarks            String?
+  enteredById        String
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  farmhouse        Farmhouse         @relation(fields: [farmhouseId], references: [id])
+  enteredBy        User              @relation(fields: [enteredById], references: [id])
+  linkedCollection CollectionRecord? @relation(fields: [linkedCollectionId], references: [id])
+  lineItems        GradingLineItem[]
+
+  @@unique([farmhouseId, date, batchNumber])
+  @@index([farmhouseId, date])
+}
+
+/// One graded lot = Egg SKU (Size & Health grade × Type), quantity in pcs. On
+/// submit, posts to stock via ledger.ts only (rule 5.4). ANGKAT_RAK is never a
+/// grading line (it bypasses grading); KOSONG is not a stockable grade at all.
+model GradingLineItem {
+  id              String          @id @default(cuid())
+  gradingRecordId String
+  sizeHealthGrade SizeHealthGrade
+  typeGradeId     String
+  quantity        Int // pcs
+
+  gradingRecord GradingRecord @relation(fields: [gradingRecordId], references: [id], onDelete: Cascade)
+  gradeType     GradeType     @relation(fields: [typeGradeId], references: [id])
+
+  @@unique([gradingRecordId, sizeHealthGrade, typeGradeId]) // one row per Egg SKU
 }
