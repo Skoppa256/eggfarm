@@ -1,137 +1,110 @@
-import { gradeLabel } from "@/lib/grades";
-import { getDefaultWarehouse, listGradeTypes } from "@/lib/server/catalog";
-import { getLedger, getStock } from "@/lib/server/ledger";
+import { redirect } from "next/navigation";
+
+import { gradeLabel, SIZE_HEALTH_GRADES } from "@/lib/grades";
+import { getSessionUser } from "@/lib/server/auth";
+import { listGradeTypes as listActiveGradeTypes } from "@/lib/server/catalog";
+import { getStock } from "@/lib/server/ledger";
+import { listThresholds } from "@/lib/server/thresholds";
+import { listWarehouses } from "@/lib/server/warehouses";
 import { formatPcs } from "@/lib/units";
 
-import { StockEntryForm } from "./stock-entry-form";
+import { WarehouseSelect } from "./warehouse-select";
+import { WarehouseTabs } from "./warehouse-tabs";
 
 export const dynamic = "force-dynamic";
 
-function formatDateTime(value: Date): string {
-  // Stable UTC rendering (no locale/timezone drift between renders).
-  return value.toISOString().replace("T", " ").slice(0, 16) + " UTC";
-}
+export default async function WarehouseStockPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ warehouseId?: string }>;
+}) {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
 
-const MOVEMENT_BADGE: Record<string, string> = {
-  IN: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
-  OUT: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200",
-  CORRECTION: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  VOID: "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200",
-};
-
-export default async function WarehousePage() {
-  const warehouse = await getDefaultWarehouse();
-
-  if (!warehouse) {
+  const sp = await searchParams;
+  const warehouses = await listWarehouses();
+  if (warehouses.length === 0) {
     return (
       <main className="mx-auto w-full max-w-5xl p-8">
-        <h1 className="text-xl font-semibold">No warehouse found</h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Seed the database first: <code>pnpm db:seed</code>.
-        </p>
+        <h1 className="text-xl font-semibold">No warehouses</h1>
+        <p className="mt-2 text-sm text-zinc-500">Create one under Warehouses first.</p>
       </main>
     );
   }
+  const selectedId = warehouses.find((w) => w.id === sp.warehouseId)?.id ?? warehouses[0].id;
 
-  const [stock, ledger, gradeTypes] = await Promise.all([
-    getStock(warehouse.id),
-    getLedger(warehouse.id),
-    listGradeTypes(),
+  const [stock, thresholds, gradeTypes] = await Promise.all([
+    getStock(selectedId),
+    listThresholds(selectedId),
+    listActiveGradeTypes(),
   ]);
 
+  const stockMap = new Map(stock.map((s) => [`${s.sizeHealthGrade}|${s.typeGradeId}`, s.currentQuantity]));
+  const minMap = new Map(thresholds.map((t) => [`${t.sizeHealthGrade}|${t.typeGradeId}`, t.minQuantity]));
+
+  const rows = SIZE_HEALTH_GRADES.map((grade) => {
+    const cells = gradeTypes.map((t) => {
+      const qty = stockMap.get(`${grade}|${t.id}`) ?? 0;
+      const min = minMap.get(`${grade}|${t.id}`);
+      return { typeId: t.id, qty, min, low: min != null && qty < min };
+    });
+    return { grade, cells, hasContent: cells.some((c) => c.qty > 0 || c.low) };
+  }).filter((r) => r.hasContent);
+
+  const lowCount = rows.reduce((n, r) => n + r.cells.filter((c) => c.low).length, 0);
+
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-6 sm:p-8">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{warehouse.name}</h1>
-        <p className="text-sm text-zinc-500">Warehouse {warehouse.code}</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Warehouse</h1>
+        <p className="text-sm text-zinc-500">Current stock per Egg SKU, in rak + pcs.</p>
       </header>
 
-      <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">Record a movement</h2>
-        <StockEntryForm warehouseId={warehouse.id} gradeTypes={gradeTypes} />
-      </section>
+      <WarehouseTabs active="stock" warehouseId={selectedId} role={user.role} />
+      <WarehouseSelect warehouses={warehouses} selectedId={selectedId} />
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Current stock</h2>
-        {stock.length === 0 ? (
-          <p className="text-sm text-zinc-500">No stock yet.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
-                <tr>
-                  <th className="px-4 py-2">Grade</th>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2 text-right">Quantity</th>
-                  <th className="px-4 py-2 text-right">pcs</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {stock.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-4 py-2 font-medium">{gradeLabel(row.sizeHealthGrade)}</td>
-                    <td className="px-4 py-2">{row.gradeType.name}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {formatPcs(row.currentQuantity)}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-zinc-500">
-                      {row.currentQuantity}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      {lowCount > 0 && (
+        <p className="rounded border border-rose-300 bg-rose-50 p-3 text-sm font-medium text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200">
+          {lowCount} SKU{lowCount > 1 ? "s" : ""} below the low-stock threshold.
+        </p>
+      )}
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Movement ledger</h2>
-        {ledger.length === 0 ? (
-          <p className="text-sm text-zinc-500">No movements yet.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
-                <tr>
-                  <th className="px-4 py-2">When</th>
-                  <th className="px-4 py-2">Grade / Type</th>
-                  <th className="px-4 py-2">Movement</th>
-                  <th className="px-4 py-2 text-right">Quantity</th>
-                  <th className="px-4 py-2 text-right">Balance</th>
-                  <th className="px-4 py-2">Source</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {ledger.map((m) => (
-                  <tr key={m.id}>
-                    <td className="whitespace-nowrap px-4 py-2 text-zinc-500">
-                      {formatDateTime(m.date)}
-                    </td>
-                    <td className="px-4 py-2">
-                      {gradeLabel(m.sizeHealthGrade)} / {m.gradeType.name}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                          MOVEMENT_BADGE[m.movementType] ?? ""
-                        }`}
-                      >
-                        {m.movementType}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">{formatPcs(m.quantity)}</td>
-                    <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums text-zinc-500">
-                      {m.preQuantity} → {m.postQuantity}
-                    </td>
-                    <td className="px-4 py-2 text-zinc-500">{m.sourceType}</td>
-                  </tr>
+      {rows.length === 0 ? (
+        <p className="text-sm text-zinc-500">No stock in this warehouse yet.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
+              <tr>
+                <th className="px-4 py-2">Grade</th>
+                {gradeTypes.map((t) => (
+                  <th key={t.id} className="px-4 py-2 text-right">
+                    {t.name}
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {rows.map((row) => (
+                <tr key={row.grade}>
+                  <td className="px-4 py-2 font-medium">{gradeLabel(row.grade)}</td>
+                  {row.cells.map((c) => (
+                    <td
+                      key={c.typeId}
+                      className={`px-4 py-2 text-right tabular-nums ${
+                        c.low ? "font-semibold text-rose-600" : c.qty === 0 ? "text-zinc-300 dark:text-zinc-600" : ""
+                      }`}
+                    >
+                      {formatPcs(c.qty)}
+                      {c.low ? <span className="ml-1 text-xs">▼ min {c.min}</span> : null}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </main>
   );
 }

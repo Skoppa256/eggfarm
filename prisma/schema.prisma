@@ -86,10 +86,11 @@ model GradeType {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  warehouseStocks   WarehouseStock[]
-  stockMovements    StockMovement[]
-  angkatRakLifts    AngkatRakLift[]
-  gradingLineItems  GradingLineItem[]
+  warehouseStocks    WarehouseStock[]
+  stockMovements     StockMovement[]
+  angkatRakLifts     AngkatRakLift[]
+  gradingLineItems   GradingLineItem[]
+  lowStockThresholds LowStockThreshold[]
 }
 
 /// A storage location for graded egg stock. Minimal in Slice 1; low-stock
@@ -102,9 +103,10 @@ model Warehouse {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  warehouseStocks   WarehouseStock[]
-  stockMovements    StockMovement[]
-  farmhouseMappings FarmhouseWarehouseMapping[]
+  warehouseStocks    WarehouseStock[]
+  stockMovements     StockMovement[]
+  farmhouseMappings  FarmhouseWarehouseMapping[]
+  lowStockThresholds LowStockThreshold[]
 }
 
 // ---------------------------------------------------------------------------
@@ -361,4 +363,28 @@ model GradingLineItem {
   gradeType     GradeType     @relation(fields: [typeGradeId], references: [id])
 
   @@unique([gradingRecordId, sizeHealthGrade, typeGradeId]) // one row per Egg SKU
+}
+
+// ---------------------------------------------------------------------------
+// Low-stock thresholds (Slice 6)
+// ---------------------------------------------------------------------------
+
+/// Configurable minimum balance (pcs) per Egg SKU per warehouse (SRS FR-27). A SKU
+/// is "low" when its WarehouseStock.currentQuantity < minQuantity. This is config —
+/// a SEPARATE table from WarehouseStock, so it never violates rule 5.4 (only
+/// ledger.ts writes WarehouseStock). Admin-managed.
+model LowStockThreshold {
+  id              String          @id @default(cuid())
+  warehouseId     String
+  sizeHealthGrade SizeHealthGrade
+  typeGradeId     String
+  minQuantity     Int // pcs
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  gradeType GradeType @relation(fields: [typeGradeId], references: [id])
+
+  @@unique([warehouseId, sizeHealthGrade, typeGradeId])
+  @@index([warehouseId])
 }

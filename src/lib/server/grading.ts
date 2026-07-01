@@ -5,7 +5,7 @@ import { GradingStatus, SizeHealthGrade, SourceType } from "@/generated/prisma/e
 import { toBusinessDate } from "@/lib/dates";
 import { ConflictError } from "@/lib/errors";
 import { GRADEABLE_GRADES, isPcsGrade } from "@/lib/grades";
-import { prisma } from "@/lib/server/db";
+import { prisma, TX_OPTIONS } from "@/lib/server/db";
 import { resolveWarehouseId } from "@/lib/server/farmhouses";
 import { recordInTx, recordOutTx } from "@/lib/server/ledger";
 
@@ -177,7 +177,7 @@ export async function saveDraft(key: GradingKey, input: GradingInput, ctx: Ctx) 
       });
     }
     return record;
-  });
+  }, TX_OPTIONS);
 }
 
 /**
@@ -276,5 +276,5 @@ export async function submitGrading(key: GradingKey, input: GradingInput, ctx: C
     }
 
     return record;
-  });
+  }, TX_OPTIONS);
 }

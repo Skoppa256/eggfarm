@@ -4,8 +4,8 @@ import { randomUUID } from "node:crypto";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { MovementType, SourceType, type SizeHealthGrade } from "@/generated/prisma/enums";
-import { InsufficientStockError } from "@/lib/errors";
-import { prisma } from "@/lib/server/db";
+import { ConflictError, InsufficientStockError } from "@/lib/errors";
+import { prisma, TX_OPTIONS } from "@/lib/server/db";
 
 // THE LEDGER — the ONLY writer of stock in the entire codebase (CLAUDE.md §5.4).
 //
@@ -57,83 +57,128 @@ function assertPositiveIntPcs(quantity: number): void {
   }
 }
 
+/** Human label for a SKU, for error messages (e.g. "A / Omega"). */
+async function skuLabel(tx: Tx, grade: SizeHealthGrade, typeGradeId: string): Promise<string> {
+  const gradeType = await tx.gradeType.findUnique({
+    where: { id: typeGradeId },
+    select: { name: true },
+  });
+  return `${grade} / ${gradeType?.name ?? typeGradeId}`;
+}
+
+/** What gets written onto the movement row besides the computed pre/post/quantity. */
+interface MovementMeta {
+  movementType: MovementType;
+  sourceType: SourceType;
+  sourceReferenceId?: string | null;
+  unitUsed?: string;
+  reason?: string | null;
+  enteredById: string;
+  date?: Date;
+}
+
 /**
- * Post one movement + balance update within an EXISTING transaction `tx`. This code
- * still lives in ledger.ts (rule 5.4 holds), so a caller that must bundle stock with
- * other writes — e.g. a collection saving its Angkat Rak lifts — passes its own `tx`
- * and gets a single atomic commit (rule 5.1). Locks the balance row FOR UPDATE
- * (rule 5.2) and rejects an oversell.
+ * The locked core that EVERY stock write funnels through (rules 5.1 / 5.2 / 5.4):
+ * ensure the balance row, lock it FOR UPDATE, read `pre`, let the caller compute the
+ * new balance (`computePost`, which may reject — oversell, negative correction, …),
+ * then update the balance and append the movement — atomically, both or neither.
+ * `quantity` is stored as the magnitude of the change |post − pre|.
+ */
+async function applyMovementTx(
+  tx: Tx,
+  sku: SkuRef,
+  computePost: (pre: number) => Promise<number>,
+  meta: MovementMeta,
+) {
+  const { warehouseId, sizeHealthGrade, typeGradeId } = sku;
+
+  // Ensure the balance row exists so there is a row to lock. ON CONFLICT DO NOTHING
+  // keeps the transaction healthy if two writers first-touch the same SKU at once.
+  await tx.$executeRaw`
+    INSERT INTO "WarehouseStock"
+      ("id", "warehouseId", "sizeHealthGrade", "typeGradeId", "currentQuantity", "createdAt", "updatedAt")
+    VALUES
+      (${randomUUID()}, ${warehouseId}, ${sizeHealthGrade}::"SizeHealthGrade", ${typeGradeId}, 0, now(), now())
+    ON CONFLICT ("warehouseId", "sizeHealthGrade", "typeGradeId") DO NOTHING
+  `;
+
+  // Lock the balance row FOR UPDATE (rule 5.2), then read the current balance.
+  const locked = await tx.$queryRaw<{ currentQuantity: number }[]>`
+    SELECT "currentQuantity"
+    FROM "WarehouseStock"
+    WHERE "warehouseId" = ${warehouseId}
+      AND "sizeHealthGrade" = ${sizeHealthGrade}::"SizeHealthGrade"
+      AND "typeGradeId" = ${typeGradeId}
+    FOR UPDATE
+  `;
+  const preQuantity = locked[0].currentQuantity;
+  const postQuantity = await computePost(preQuantity); // may throw → tx rolls back
+  const quantity = Math.abs(postQuantity - preQuantity);
+
+  // Update the balance projection AND append the ledger row — both or neither.
+  await tx.warehouseStock.update({
+    where: {
+      warehouseId_sizeHealthGrade_typeGradeId: { warehouseId, sizeHealthGrade, typeGradeId },
+    },
+    data: { currentQuantity: postQuantity },
+  });
+
+  return tx.stockMovement.create({
+    data: {
+      warehouseId,
+      sizeHealthGrade,
+      typeGradeId,
+      movementType: meta.movementType,
+      quantity,
+      unitUsed: meta.unitUsed ?? "PCS",
+      sourceType: meta.sourceType,
+      sourceReferenceId: meta.sourceReferenceId ?? null,
+      reason: meta.reason ?? null,
+      preQuantity,
+      postQuantity,
+      date: meta.date ?? undefined,
+      enteredById: meta.enteredById,
+    },
+  });
+}
+
+/**
+ * IN/OUT movement within an EXISTING transaction `tx` (rule 5.4 holds — this is
+ * ledger.ts). A caller that must bundle stock with other writes passes its own `tx`
+ * for a single atomic commit. OUT rejects an oversell, naming the short SKU.
  */
 async function postMovementTx(tx: Tx, input: MovementInput, direction: Direction) {
-  const { warehouseId, sizeHealthGrade, typeGradeId, quantity } = input;
-  assertPositiveIntPcs(quantity);
-
-  {
-    // 1) Ensure the balance row exists so there is a row to lock. ON CONFLICT DO
-    //    NOTHING keeps the transaction healthy if two writers first-touch the same
-    //    SKU concurrently (the loser simply finds the row already present).
-    await tx.$executeRaw`
-      INSERT INTO "WarehouseStock"
-        ("id", "warehouseId", "sizeHealthGrade", "typeGradeId", "currentQuantity", "createdAt", "updatedAt")
-      VALUES
-        (${randomUUID()}, ${warehouseId}, ${sizeHealthGrade}::"SizeHealthGrade", ${typeGradeId}, 0, now(), now())
-      ON CONFLICT ("warehouseId", "sizeHealthGrade", "typeGradeId") DO NOTHING
-    `;
-
-    // 2) Lock the balance row FOR UPDATE (rule 5.2), then read the current balance.
-    const locked = await tx.$queryRaw<{ currentQuantity: number }[]>`
-      SELECT "currentQuantity"
-      FROM "WarehouseStock"
-      WHERE "warehouseId" = ${warehouseId}
-        AND "sizeHealthGrade" = ${sizeHealthGrade}::"SizeHealthGrade"
-        AND "typeGradeId" = ${typeGradeId}
-      FOR UPDATE
-    `;
-    const preQuantity = locked[0].currentQuantity;
-    const delta = direction === "IN" ? quantity : -quantity;
-    const postQuantity = preQuantity + delta;
-
-    // 3) Reject an oversell atomically — nothing written, error names the SKU.
-    if (postQuantity < 0) {
-      const gradeType = await tx.gradeType.findUnique({
-        where: { id: typeGradeId },
-        select: { name: true },
-      });
-      const sku = `${sizeHealthGrade} / ${gradeType?.name ?? typeGradeId}`;
-      throw new InsufficientStockError(sku, preQuantity, quantity);
-    }
-
-    // 4) Update the balance projection AND append the ledger row — both or neither.
-    await tx.warehouseStock.update({
-      where: {
-        warehouseId_sizeHealthGrade_typeGradeId: { warehouseId, sizeHealthGrade, typeGradeId },
-      },
-      data: { currentQuantity: postQuantity },
-    });
-
-    return tx.stockMovement.create({
-      data: {
-        warehouseId,
-        sizeHealthGrade,
-        typeGradeId,
-        movementType: direction === "IN" ? MovementType.IN : MovementType.OUT,
-        quantity,
-        unitUsed: input.unitUsed ?? "PCS",
-        sourceType: input.sourceType,
-        sourceReferenceId: input.sourceReferenceId ?? null,
-        reason: input.reason ?? null,
-        preQuantity,
-        postQuantity,
-        date: input.date ?? undefined,
-        enteredById: input.enteredById,
-      },
-    });
-  }
+  assertPositiveIntPcs(input.quantity);
+  const { sizeHealthGrade, typeGradeId, quantity } = input;
+  return applyMovementTx(
+    tx,
+    input,
+    async (pre) => {
+      const post = direction === "IN" ? pre + quantity : pre - quantity;
+      if (post < 0) {
+        throw new InsufficientStockError(
+          await skuLabel(tx, sizeHealthGrade, typeGradeId),
+          pre,
+          quantity,
+        );
+      }
+      return post;
+    },
+    {
+      movementType: direction === "IN" ? MovementType.IN : MovementType.OUT,
+      sourceType: input.sourceType,
+      sourceReferenceId: input.sourceReferenceId,
+      unitUsed: input.unitUsed,
+      reason: input.reason,
+      enteredById: input.enteredById,
+      date: input.date,
+    },
+  );
 }
 
 /** Standalone: post one movement in its own transaction. */
 async function postMovement(input: MovementInput, direction: Direction) {
-  return prisma.$transaction((tx) => postMovementTx(tx, input, direction));
+  return prisma.$transaction((tx) => postMovementTx(tx, input, direction), TX_OPTIONS);
 }
 
 /** Record stock coming IN (e.g. Angkat Rak post, grading submit). */
@@ -162,6 +207,75 @@ export function recordOutTx(tx: Tx, input: MovementInput) {
   return postMovementTx(tx, input, "OUT");
 }
 
+/** Minimum reason length for a Stock Correction (SRS FR-26). */
+export const CORRECTION_MIN_REASON = 20;
+
+export interface CorrectionInput extends SkuRef {
+  /** Exactly one of: the absolute corrected balance (pcs) OR a signed delta (pcs). */
+  newQuantity?: number;
+  delta?: number;
+  reason: string; // >= CORRECTION_MIN_REASON chars
+  enteredById: string;
+  sourceReferenceId?: string | null; // optional external reference
+  date?: Date;
+}
+
+/**
+ * Supervised Stock Correction (SRS FR-26, CLAUDE.md §5.1). Writes an IMMUTABLE
+ * CORRECTION movement carrying pre/post and updates the balance, atomically and
+ * row-locked. There is no edit/delete — to fix a wrong correction, submit a SECOND
+ * correction. Rejects a reason shorter than 20 chars, and a result below zero or
+ * equal to the current balance.
+ */
+export async function recordCorrection(input: CorrectionInput) {
+  const reason = input.reason.trim();
+  if (reason.length < CORRECTION_MIN_REASON) {
+    throw new ConflictError(
+      `A correction needs a reason of at least ${CORRECTION_MIN_REASON} characters.`,
+    );
+  }
+  const hasAbsolute = input.newQuantity != null;
+  const hasDelta = input.delta != null;
+  if (hasAbsolute === hasDelta) {
+    throw new ConflictError("Provide either a corrected quantity or a delta, not both.");
+  }
+  if (hasAbsolute && (!Number.isInteger(input.newQuantity) || (input.newQuantity ?? 0) < 0)) {
+    throw new ConflictError("Corrected quantity must be a non-negative whole number (pcs).");
+  }
+  if (hasDelta && !Number.isInteger(input.delta)) {
+    throw new ConflictError("Delta must be a whole number (pcs).");
+  }
+
+  return prisma.$transaction((tx) =>
+    applyMovementTx(
+      tx,
+      input,
+      async (pre) => {
+        const post = hasAbsolute ? (input.newQuantity as number) : pre + (input.delta as number);
+        if (post < 0) {
+          throw new ConflictError(
+            `Correction would drive ${await skuLabel(tx, input.sizeHealthGrade, input.typeGradeId)} below zero.`,
+          );
+        }
+        if (post === pre) {
+          throw new ConflictError("Correction must change the balance.");
+        }
+        return post;
+      },
+      {
+        movementType: MovementType.CORRECTION,
+        sourceType: SourceType.CORRECTION,
+        sourceReferenceId: input.sourceReferenceId,
+        unitUsed: "PCS",
+        reason,
+        enteredById: input.enteredById,
+        date: input.date,
+      },
+    ),
+    TX_OPTIONS,
+  );
+}
+
 /** Current balances (one row per touched SKU) for a warehouse, with Type grade. */
 export function getStock(warehouseId: string) {
   return prisma.warehouseStock.findMany({
@@ -175,6 +289,33 @@ export function getStock(warehouseId: string) {
 export function getLedger(warehouseId: string, limit = 100) {
   return prisma.stockMovement.findMany({
     where: { warehouseId },
+    include: { gradeType: true },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    take: limit,
+  });
+}
+
+export interface LedgerFilter {
+  warehouseId: string;
+  from?: Date;
+  to?: Date;
+  sizeHealthGrade?: SizeHealthGrade;
+  typeGradeId?: string;
+  limit?: number;
+}
+
+/** The movement ledger with date-range / SKU filters (read-only view, SRS FR-25). */
+export function getFilteredLedger(filter: LedgerFilter) {
+  const { warehouseId, from, to, sizeHealthGrade, typeGradeId, limit = 200 } = filter;
+  return prisma.stockMovement.findMany({
+    where: {
+      warehouseId,
+      ...(sizeHealthGrade ? { sizeHealthGrade } : {}),
+      ...(typeGradeId ? { typeGradeId } : {}),
+      ...(from || to
+        ? { date: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } }
+        : {}),
+    },
     include: { gradeType: true },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     take: limit,

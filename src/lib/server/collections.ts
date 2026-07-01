@@ -3,7 +3,7 @@ import "server-only";
 import { SizeHealthGrade, SourceType } from "@/generated/prisma/enums";
 import { toBusinessDate } from "@/lib/dates";
 import { ConflictError, NotFoundError } from "@/lib/errors";
-import { prisma } from "@/lib/server/db";
+import { prisma, TX_OPTIONS } from "@/lib/server/db";
 import { resolveMaxBatches, resolveWarehouseId } from "@/lib/server/farmhouses";
 import { recordInTx, recordOutTx } from "@/lib/server/ledger";
 
@@ -170,7 +170,7 @@ export async function createCollection(key: CollectionKey, input: CollectionCoun
     }
 
     return collection;
-  });
+  }, TX_OPTIONS);
 }
 
 /**
@@ -249,5 +249,5 @@ export async function updateCollection(collectionId: string, input: CollectionCo
     }
 
     return tx.collectionRecord.findUnique({ where: { id: collectionId }, include: LIFTS_INCLUDE });
-  });
+  }, TX_OPTIONS);
 }

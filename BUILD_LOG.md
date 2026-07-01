@@ -4,12 +4,12 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 5)
+## CURRENT STATUS (updated after Slice 6)
 
-- **Slices complete & committed:** Slices 1–4 + refactor + WITA fix (see below), and
-  **Slice 5 (grading input)**.
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **49/49 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 6 (warehouse views, corrections, thresholds) — depends on Slices 1 & 5.
+- **Slices complete & committed:** Slices 1–5 + refactor + WITA fix, and **Slice 6
+  (warehouse views, stock correction, low-stock thresholds)**.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **58/58 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 7 (buyers + sales & dispatch) — depends on Slices 1 & 6.
 - **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
   (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
@@ -17,7 +17,8 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ### Migrations (apply in order; `pnpm test` and `pnpm db:deploy` do this for you)
 1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` ·
-4. `slice3_config_master_data` · 5. `slice4_collection_input` · 6. `slice5_grading`.
+4. `slice3_config_master_data` · 5. `slice4_collection_input` · 6. `slice5_grading` ·
+7. `slice6_low_stock_thresholds`.
 If a migration ever fails mid-way on the **test** DB (e.g. a made-required column with old NULLs),
 resolve with `DATABASE_URL=<test-url> pnpm exec prisma migrate resolve --rolled-back <name>` then re-run.
 
@@ -67,6 +68,16 @@ pnpm db:studio               # prisma studio
 
 ### Needs your review
 - **Nothing blocking.** No flock/HD%/FCR/feed math yet.
+- **Removed the Slice 1 demo (Slice 6).** The generic "Stock In/Out" (ADJUSTMENT) form on
+  `/warehouse` was a foundation-proof demo, not an SRS feature — real stock moves via
+  collection / grading / sales / corrections. I deleted it and rebuilt `/warehouse` as the
+  real stock view; its Owner-rejected coverage moved to the correction/threshold tests.
+  `SourceType.ADJUSTMENT` remains in the enum (now unused) in case you want a manual-adjust
+  tool later. (Assumption A13.)
+- **Warehouse selectors include inactive warehouses (Slice 6)** so stock/ledger in a
+  deactivated warehouse stays viewable and correctable. (Assumption A14.)
+- **Low-stock alerts (FR-27, "Should Have")** are surfaced on the warehouse view (flagged
+  cells + a banner); the dashboard surfacing lands with Slice 13. (Assumption A15.)
 - **Collection units (Slice 4).** Good/Retak/Lunak/Kosong are entered in **pcs** (FR-07 says
   "all in pcs"); **Angkat Rak is entered in rak** (whole racks) and converted ×30 to pcs.
   Change the collection form if counts should also accept rak. (Assumption A9.)
@@ -97,6 +108,51 @@ pnpm db:studio               # prisma studio
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
   (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
 - **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Slice 6 — Warehouse views, Stock Correction, low-stock thresholds ✅
+
+**Goal (BUILD_PLAN / SRS §3.4):** stock view per warehouse, filtered ledger,
+supervised immutable Stock Corrections, and configurable low-stock thresholds.
+
+### What was built
+- **Schema** → migration #7: `LowStockThreshold` (per warehouse + Egg SKU, `minQuantity`
+  pcs). Deliberately a SEPARATE table from `WarehouseStock`, so a threshold write never
+  touches the balance cache — rule 5.4 stays intact.
+- **ledger.ts — generalized + correction.** Refactored the locked core into
+  `applyMovementTx(computePost)`: one FOR-UPDATE-locked, atomic path shared by IN/OUT
+  and the new **`recordCorrection`**. A correction writes an IMMUTABLE `CORRECTION`
+  movement (`SourceType.CORRECTION`) carrying pre/post, updates the balance, and rejects
+  reason < 20 chars, a result < 0, or a no-op. No edit/delete — a second correction is
+  the only remedy. Added `getFilteredLedger` (date/SKU filters). The 49 pre-existing
+  ledger tests still pass, confirming the refactor preserved IN/OUT/oversell behaviour.
+- **corrections.ts** (`listCorrections` + Superadmin-guarded `requireCorrectionAudit`)
+  and **thresholds.ts** (`setThreshold`, `listThresholds`, `getLowStockSkus`). Zod
+  schemas + role-gated actions (correction & thresholds → Admin/Superadmin; Owner
+  rejected, rule 5.5).
+- **Warehouse UI rebuilt** with a shared tab bar + selector: `/warehouse` (current stock
+  grouped by grade with Type columns, rak+pcs, zero rows hidden, sub-threshold cells
+  flagged + a banner), `/warehouse/ledger` (warehouse/date/grade/type filters; CORRECTION
+  amber and VOID struck-through), `/warehouse/correction` (form + current-stock
+  reference), `/warehouse/audit` (Superadmin), `/warehouse/thresholds`.
+- **Removed the Slice 1 demo** IN/OUT form (see "Needs your review" A13).
+- **Robustness:** `TX_OPTIONS` (maxWait 10s / timeout 20s) on the interactive stock
+  transactions (ledger, collection, grading) — a lock-wait under load no longer spuriously
+  times out. Fixed a transient flake; verified stable across 8 consecutive runs.
+- **Tests (11 new, 58 total):** correction is immutable with correct pre/post and updates
+  the balance; reason < 20 rejected (nothing written); a second correction is the remedy
+  (originals preserved); delta correction + below-zero guard; sub-threshold SKU flagged
+  and `minQuantity 0` removes; Owner rejected on correction & threshold; correction audit
+  is Superadmin-only.
+
+### Key decisions
+- **One locked core for every stock write** (`applyMovementTx`) — IN/OUT/CORRECTION differ
+  only by a `computePost(pre)` strategy; keeps rules 5.1/5.2/5.4 in exactly one place.
+- **Thresholds in their own table** so config never writes the ledger-owned cache.
+
+### Test status
+`pnpm test` → **58 passed** (15 files), stable. `tsc`, `eslint`, `next build` all clean.
 
 ---
 

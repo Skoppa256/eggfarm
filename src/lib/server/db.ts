@@ -28,3 +28,11 @@ export const prisma: PrismaClient = globalForPrisma.prisma ?? createPrismaClient
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
+
+/**
+ * Options for interactive stock transactions. Generous vs Prisma's defaults
+ * (maxWait 2s / timeout 5s) so a legitimate FOR UPDATE lock-wait under warehouse
+ * contention (or a busy CI box) completes instead of spuriously timing out. A true
+ * deadlock still surfaces immediately via Postgres's own detector.
+ */
+export const TX_OPTIONS = { maxWait: 10_000, timeout: 20_000 } as const;
