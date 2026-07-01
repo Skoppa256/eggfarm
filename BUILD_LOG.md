@@ -11,11 +11,8 @@ Running log of what was built, slice by slice. Newest summary on top.
   Slice 4 (collection input).
 - **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **42/42 pass** (against `eggfarm_test`) · `next build` succeeds.
 - **Next up:** Slice 5 (grading) — depends on Slices 1, 3, 4.
-- **⚠️ WIB vs WITA — please confirm.** Your last two prompts said both "WITA (Asia/Makassar,
-  UTC+8)" (with full rationale) and, in passing, "the WIB fix". I implemented **WITA / UTC+8**
-  per the detailed spec (`src/lib/dates.ts`, committed `b1b00df`). WIB is UTC+7 (Jakarta). If the
-  farm is actually on WIB, change `WITA_OFFSET_MS` to `7 * …` and the two boundary assertions in
-  `dates.test.ts` — it's a one-line offset + test update.
+- **Timezone: CONFIRMED WITA.** The farm is in Makassar → business day is Asia/Makassar
+  (WITA, UTC+8, no DST), implemented in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
   in `.next`; `tsconfig.json` now excludes that pattern so `tsc` stays green.
 
@@ -71,8 +68,6 @@ pnpm db:studio               # prisma studio
 
 ### Needs your review
 - **Nothing blocking.** No flock/HD%/FCR/feed math yet.
-- **WIB vs WITA** — see the ⚠️ in CURRENT STATUS. Implemented **WITA / UTC+8** per your
-  detailed spec; confirm if the farm is really WIB / UTC+7.
 - **Collection units (Slice 4).** Good/Retak/Lunak/Kosong are entered in **pcs** (FR-07 says
   "all in pcs"); **Angkat Rak is entered in rak** (whole racks) and converted ×30 to pcs.
   Change the collection form if counts should also accept rak. (Assumption A9.)
