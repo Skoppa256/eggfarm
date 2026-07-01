@@ -19,7 +19,7 @@ export function VoidForm({ transactionId }: { transactionId: string }) {
         <input
           name="reason"
           required
-          minLength={3}
+          minLength={10}
           className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
         />
       </label>

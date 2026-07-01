@@ -175,8 +175,8 @@ export async function createSale(input: SaleInput, ctx: Ctx) {
  */
 export async function voidSale(transactionId: string, reason: string, ctx: Ctx) {
   const trimmed = reason.trim();
-  if (trimmed.length < 3) {
-    throw new ConflictError("A void needs a reason (at least 3 characters).");
+  if (trimmed.length < 10) {
+    throw new ConflictError("A void needs a reason of at least 10 characters.");
   }
 
   const sale = await prisma.salesTransaction.findUnique({

@@ -134,6 +134,20 @@ describe("sales — void (FR-33)", () => {
     );
     expect(await qty(f, SizeHealthGrade.A, f.normal)).toBe(100); // unchanged by the failed double-void
   });
+
+  it("rejects a void reason under 10 characters, changing nothing", async () => {
+    const f = await setup();
+    await seed(f, SizeHealthGrade.A, f.normal, 100);
+    const sale = await createSale(
+      { warehouseId: f.warehouseId, buyerId: f.buyerId, date: DATE, lines: [line(SizeHealthGrade.A, f.normal, 30)] },
+      { userId: f.userId },
+    );
+    await expect(voidSale(sale.id, "too short", { userId: f.userId })).rejects.toBeInstanceOf(
+      ConflictError,
+    );
+    expect((await findSale(sale.id))?.status).toBe("ACTIVE");
+    expect(await qty(f, SizeHealthGrade.A, f.normal)).toBe(70); // stock still deducted, not restored
+  });
 });
 
 describe("sales — dispatch target & buyer validation", () => {

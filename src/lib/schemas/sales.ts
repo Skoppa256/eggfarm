@@ -32,5 +32,5 @@ export const saleLineSchema = z.object({
 
 export const voidSaleSchema = z.object({
   transactionId: z.string().min(1),
-  reason: z.string().trim().min(3, "A reason (at least 3 characters) is required."),
+  reason: z.string().trim().min(10, "A reason (at least 10 characters) is required."),
 });
