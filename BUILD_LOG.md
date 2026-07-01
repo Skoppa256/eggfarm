@@ -4,12 +4,15 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 3)
+## CURRENT STATUS (updated after Slice 3 + WITA fix)
 
 - **Slices complete & committed:** Slice 1 (warehouse ledger), Slice 2 (auth, users, roles), a
-  refactor (`enteredById` FK to User), Slice 3 (config & master data).
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **31/31 pass** (against `eggfarm_test`) · `next build` succeeds.
+  refactor (`enteredById` FK to User), Slice 3 (config & master data), and a fix making the
+  business day WITA (Asia/Makassar) — resolves A6.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **35/35 pass** (against `eggfarm_test`) · `next build` succeeds.
 - **Next up:** Slice 4 (collection input) — depends on Slices 1 & 3.
+- **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
+  in `.next`; `tsconfig.json` now excludes that pattern so `tsc` stays green.
 
 ### Migrations (apply in order; `pnpm test` and `pnpm db:deploy` do this for you)
 1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` · 4. `slice3_config_master_data`.
@@ -62,11 +65,10 @@ pnpm db:studio               # prisma studio
 
 ### Needs your review
 - **Nothing blocking.** No flock/HD%/FCR/feed math yet.
-- **Business dates are UTC date-only (Slice 3).** Effective dates use `@db.Date`
-  normalized to UTC midnight; "today"/"next day"/"as-of" arithmetic is thus
-  timezone-agnostic, but *what counts as "today"* is the UTC calendar day. For a
-  WIB (UTC+7) farm, entries between 00:00–07:00 WIB fall on the previous UTC day.
-  Revisit with a farm-timezone helper if that boundary matters. (Assumption A6.)
+- **A6 — RESOLVED.** The business day is now WITA (Asia/Makassar, UTC+8, no DST):
+  `toBusinessDate` / `businessToday` in `src/lib/dates.ts` are the single source of
+  truth, and Slice 3's mapping/batch date logic uses them. Timestamps stay UTC;
+  only the derived business date is WITA.
 - **`MAX_BATCHES_PER_DAY = 10`** is a code constant (SRS says "max configurable"; no
   global-settings table in scope). Change the constant in `farmhouses.ts` +
   `schemas/config.ts` if a different ceiling is needed. (Assumption A7.)
