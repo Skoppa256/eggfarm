@@ -11,6 +11,8 @@ function navLinks(role: Role): { href: string; label: string }[] {
   if (role === "ADMIN" || role === "SUPERADMIN") {
     links.push({ href: "/collections", label: "Collection" });
     links.push({ href: "/grading", label: "Grading" });
+    links.push({ href: "/sales", label: "Sales" });
+    links.push({ href: "/buyers", label: "Buyers" });
     links.push({ href: "/farmhouses", label: "Farmhouses" });
     links.push({ href: "/warehouses", label: "Warehouses" });
   }

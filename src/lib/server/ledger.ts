@@ -207,6 +207,24 @@ export function recordOutTx(tx: Tx, input: MovementInput) {
   return postMovementTx(tx, input, "OUT");
 }
 
+/**
+ * Restore stock for a voided line within the caller's transaction `tx`: appends a
+ * compensating VOID movement that ADDS `quantity` back (CLAUDE.md §5.1 — voids never
+ * delete the original). Reuses the shared locked core (no second stock path).
+ */
+export function recordVoidTx(tx: Tx, input: MovementInput) {
+  assertPositiveIntPcs(input.quantity);
+  return applyMovementTx(tx, input, async (pre) => pre + input.quantity, {
+    movementType: MovementType.VOID,
+    sourceType: input.sourceType,
+    sourceReferenceId: input.sourceReferenceId,
+    unitUsed: input.unitUsed,
+    reason: input.reason,
+    enteredById: input.enteredById,
+    date: input.date,
+  });
+}
+
 /** Minimum reason length for a Stock Correction (SRS FR-26). */
 export const CORRECTION_MIN_REASON = 20;
 

@@ -4,21 +4,24 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 6)
+## CURRENT STATUS (updated after Slice 7)
 
-- **Slices complete & committed:** Slices 1–5 + refactor + WITA fix, and **Slice 6
-  (warehouse views, stock correction, low-stock thresholds)**.
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **58/58 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 7 (buyers + sales & dispatch) — depends on Slices 1 & 6.
+- **Slices complete & committed:** Slices 1–6 + refactor + WITA fix, and **Slice 7
+  (buyers + sales & dispatch)**.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **66/66 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 8 (flock & placement lifecycle) — depends on Slices 2 & 3.
 - **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
   (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
   in `.next`; `tsconfig.json` now excludes that pattern so `tsc` stays green.
+- **Benign warning:** the pg driver adapter prints a `DeprecationWarning` ("client.query()
+  … already executing") during transaction-heavy tests. It's from `@prisma/adapter-pg`/`pg`,
+  not our code; tests are green and stable. Revisit at the next pg/Prisma upgrade.
 
 ### Migrations (apply in order; `pnpm test` and `pnpm db:deploy` do this for you)
 1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` ·
 4. `slice3_config_master_data` · 5. `slice4_collection_input` · 6. `slice5_grading` ·
-7. `slice6_low_stock_thresholds`.
+7. `slice6_low_stock_thresholds` · 8. `slice7_buyers_sales`.
 If a migration ever fails mid-way on the **test** DB (e.g. a made-required column with old NULLs),
 resolve with `DATABASE_URL=<test-url> pnpm exec prisma migrate resolve --rolled-back <name>` then re-run.
 
@@ -68,6 +71,15 @@ pnpm db:studio               # prisma studio
 
 ### Needs your review
 - **Nothing blocking.** No flock/HD%/FCR/feed math yet.
+- **Void reason ≥ 3 chars (Slice 7).** The SRS says a void needs a "mandatory reason" without a
+  length; I required ≥ 3 (corrections are ≥ 20 by explicit spec). Change `voidSaleSchema` /
+  `voidSale` if you want a different floor. (Assumption A16.)
+- **Sales line entry uses growable rows (Slice 7).** The new-sale form starts with 3 rows and an
+  "Add line" button; empty rows are ignored on submit. No per-row delete (a UX nicety); duplicate
+  SKUs across lines are allowed and validated against the aggregate. (Assumption A17.)
+- **Buyer profile (FR-39, "Should Have") deferred.** Buyers have full CRUD + soft-delete; the
+  per-buyer aggregate profile (totals by SKU, history) is not built — fits naturally with the
+  reports in Slice 13. (Assumption A18.)
 - **Removed the Slice 1 demo (Slice 6).** The generic "Stock In/Out" (ADJUSTMENT) form on
   `/warehouse` was a foundation-proof demo, not an SRS feature — real stock moves via
   collection / grading / sales / corrections. I deleted it and rebuilt `/warehouse` as the
@@ -108,6 +120,50 @@ pnpm db:studio               # prisma studio
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
   (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
 - **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Slice 7 — Buyers + Sales & Dispatch ✅
+
+**Goal (BUILD_PLAN / SRS §3.5–3.6):** buyer CRUD; atomic multi-line sales that deduct
+stock all-or-nothing; void that restores stock via compensating movements.
+
+### What was built
+- **Schema** → migration #8: `SalesStatus` (ACTIVE/VOIDED); `Buyer` (soft-delete);
+  `SalesTransaction` (warehouse, buyer, business date, status, void fields, notes) +
+  `SalesLineItem` (Egg SKU, pcs, `unitUsed`).
+- **ledger.ts:** `recordVoidTx` — a compensating VOID movement that ADDS stock back,
+  reusing the shared `applyMovementTx` core (no second stock path; CLAUDE.md §5.1).
+- **sales.ts:**
+  - `createSale` — validates the warehouse is ACTIVE (dispatch target) and the buyer is
+    ACTIVE, then in ONE transaction writes the header + line items and deducts each line
+    via `recordOutTx`, **iterating in a deterministic SKU-sorted order** so two concurrent
+    sales lock rows in the same order (deadlock-free). A short line makes `recordOutTx`
+    throw naming the SKU → the whole transaction rolls back (no partial deduction). One
+    OUT per line (FR-30/31).
+  - `voidSale` — restores each line via `recordVoidTx` and flips status with an atomic
+    `updateMany where status=ACTIVE` guard, so a concurrent/repeat void can't double-run
+    (idempotent). The original OUT rows are never mutated.
+  - `findSale` / `listSales` (warehouse/buyer/date/SKU filters; voided excluded by default).
+- **buyers.ts** CRUD (list/active/create/rename/setStatus, soft-delete).
+- **Zod schemas + role-gated actions** (buyers, sale create + void → Admin/Superadmin;
+  Owner rejected, rule 5.5). **UI:** `/buyers` (CRUD), `/sales` (list/search with filters),
+  `/sales/new` (multi-line editor + live rak+pcs running total), `/sales/[id]` (detail +
+  void); nav links.
+- **Tests (8 new, 66 total):** multi-line atomic deduction to the right SKUs; a short line
+  rejects the whole transaction naming the SKU with zero partial writes; void restores exact
+  stock via compensating movements and can't double-void; inactive warehouse rejected;
+  deactivated buyer excluded from new sales with history intact; Owner rejected on sale &
+  void; an Admin sale through the action (rak→pcs).
+
+### Key decisions
+- **Reused the shared locked core** (`recordOutTx`/`recordVoidTx` → `applyMovementTx`) for
+  both the deduction and the void — no parallel stock path (rule 5.4). Atomicity comes from
+  the single `$transaction` rolling back on any short line.
+- **Deadlock-free by SKU-sorted lock order**; idempotent void via a status-guarded update.
+
+### Test status
+`pnpm test` → **66 passed** (17 files), stable. `tsc`, `eslint`, `next build` all clean.
 
 ---
 

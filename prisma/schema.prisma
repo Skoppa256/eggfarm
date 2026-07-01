@@ -72,6 +72,13 @@ enum GradingStatus {
   SUBMITTED
 }
 
+/// Sales transaction lifecycle. A VOIDED transaction has had its stock restored via
+/// compensating VOID movements and is excluded from sales reports by default (FR-33).
+enum SalesStatus {
+  ACTIVE
+  VOIDED
+}
+
 // ---------------------------------------------------------------------------
 // Master data
 // ---------------------------------------------------------------------------
@@ -91,6 +98,7 @@ model GradeType {
   angkatRakLifts     AngkatRakLift[]
   gradingLineItems   GradingLineItem[]
   lowStockThresholds LowStockThreshold[]
+  salesLineItems     SalesLineItem[]
 }
 
 /// A storage location for graded egg stock. Minimal in Slice 1; low-stock
@@ -107,6 +115,7 @@ model Warehouse {
   stockMovements     StockMovement[]
   farmhouseMappings  FarmhouseWarehouseMapping[]
   lowStockThresholds LowStockThreshold[]
+  salesTransactions  SalesTransaction[]
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +195,8 @@ model User {
   batchChanges      FarmhouseBatchSetting[]
   collectionRecords CollectionRecord[]
   gradingRecords    GradingRecord[]
+  salesTransactions SalesTransaction[] @relation("SalesEnteredBy")
+  voidedSales       SalesTransaction[] @relation("SalesVoidedBy")
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -387,4 +398,65 @@ model LowStockThreshold {
 
   @@unique([warehouseId, sizeHealthGrade, typeGradeId])
   @@index([warehouseId])
+}
+
+// ---------------------------------------------------------------------------
+// Buyers + Sales & Dispatch (Slice 7)
+// ---------------------------------------------------------------------------
+
+/// A pre-registered buyer. Soft-delete via status: a deactivated buyer is excluded
+/// from new transactions but retained in history (SRS FR-36..38).
+model Buyer {
+  id        String       @id @default(cuid())
+  name      String
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  salesTransactions SalesTransaction[]
+}
+
+/// A sales/dispatch transaction: one warehouse, one buyer, one business date, many
+/// line items. On submit every line deducts stock atomically (OUT via ledger.ts,
+/// rule 5.4). Voiding restores stock via compensating VOID movements (never deletes)
+/// and flips status to VOIDED (SRS §3.5).
+model SalesTransaction {
+  id          String      @id @default(cuid())
+  date        DateTime    @db.Date // business date (WITA)
+  warehouseId String
+  buyerId     String
+  status      SalesStatus @default(ACTIVE)
+  notes       String?
+  voidReason  String?
+  voidedById  String?
+  voidedAt    DateTime?
+  enteredById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  warehouse Warehouse       @relation(fields: [warehouseId], references: [id])
+  buyer     Buyer           @relation(fields: [buyerId], references: [id])
+  enteredBy User            @relation("SalesEnteredBy", fields: [enteredById], references: [id])
+  voidedBy  User?           @relation("SalesVoidedBy", fields: [voidedById], references: [id])
+  lineItems SalesLineItem[]
+
+  @@index([warehouseId, date])
+  @@index([buyerId, date])
+}
+
+/// One line of a sales transaction = an Egg SKU (Size&Health × Type), quantity in
+/// pcs. `unitUsed` records how the operator entered it (RAK or PCS). Each line posts
+/// its own OUT movement on submit (FR-31).
+model SalesLineItem {
+  id              String          @id @default(cuid())
+  transactionId   String
+  sizeHealthGrade SizeHealthGrade
+  typeGradeId     String
+  quantity        Int // pcs
+  unitUsed        String
+
+  transaction SalesTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  gradeType   GradeType        @relation(fields: [typeGradeId], references: [id])
+
+  @@index([transactionId])
 }
