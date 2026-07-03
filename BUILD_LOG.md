@@ -4,13 +4,18 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 8)
+## CURRENT STATUS (updated after Slice 9)
 
 - **Slices complete & committed:** Slices 1–6 + refactor + WITA fix, Slice 7
-  (buyers + sales & dispatch), and **Slice 8 (flock & placement lifecycle)**.
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **76/76 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 9 (daily farmhouse recording) — MATI/AFKIR entry drives HIDUP
-  via the write-once `applyDailyMortality` helper built this slice; feed/egg buckets, HD%/FCR.
+  (buyers + sales & dispatch), Slice 8 (flock & placement lifecycle), and **Slice 9
+  (daily farmhouse recording + three pre-slice foundation items)**.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **98/98 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 10 (PAKAN feed management & mixing) — supplies **PAKAN MASUK** to the
+  daily record, at which point the feed block (TERSEDIA/INTAKE/GRAM-EKOR/FCR) becomes
+  real and gets frozen write-once (this slice computes it provisionally with MASUK = 0).
+- **⚠️ TWO STOP-and-ask refinements are awaiting your call** (implemented at the current
+  committed behavior, not blocking) — see the top two items under "Needs your review":
+  day-0 (chick-in-day) mortality, and the MINGGU convention.
 - **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
   (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
@@ -25,7 +30,14 @@ Running log of what was built, slice by slice. Newest summary on top.
 ### Migrations (apply in order; `pnpm test` and `pnpm db:deploy` do this for you)
 1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` ·
 4. `slice3_config_master_data` · 5. `slice4_collection_input` · 6. `slice5_grading` ·
-7. `slice6_low_stock_thresholds` · 8. `slice7_buyers_sales` · 9. `slice8_flock_placement`.
+7. `slice6_low_stock_thresholds` · 8. `slice7_buyers_sales` · 9. `slice8_flock_placement` ·
+10. `slice9_placement_active_unique` (raw-SQL partial index) · 11. `slice9_daily_record`.
+
+**Note on the partial index (#10):** `Placement_farmhouseId_active_key` is a partial
+UNIQUE index (`WHERE status = 'ACTIVE'`) that Prisma can't express in `schema.prisma`, so
+it's raw SQL. Prisma's `migrate dev` leaves it alone (it can't represent it, so it neither
+drops nor recreates it) — verified when generating #11. If you ever add a migration and see
+a spurious `DROP INDEX "Placement_farmhouseId_active_key"`, delete that line before applying.
 If a migration ever fails mid-way on the **test** DB (e.g. a made-required column with old NULLs),
 resolve with `DATABASE_URL=<test-url> pnpm exec prisma migrate resolve --rolled-back <name>` then re-run.
 
@@ -74,25 +86,62 @@ pnpm db:studio               # prisma studio
 ```
 
 ### Needs your review
-- **Nothing blocking.** No HD%/FCR/feed math yet (those land in Slice 9); flock
-  HARI/MINGGU/HIDUP now exist.
-- **MINGGU = floor(HARI / 7) (Slice 8).** SRS §3.9 gives `MINGGU = HARI / 7`; I read this as the
-  integer week index (`Math.floor`), so HARI 113 → MINGGU 16, HARI 120 → 17. Change `computeMinggu`
-  in `src/lib/flock.ts` if a 1-based or rounded week is wanted. (Assumption A19.)
-- **No flock editing after chick-in (Slice 8).** A flock's strain / chick-in date / placement age
-  and its set of placements are fixed at creation; the only lifecycle mutation is Superadmin
-  end-placement. Add an edit path if correcting a mis-entered chick-in is needed. (Assumption A20.)
-- **Chick-in-day mortality not supported (Slice 8).** The seed HIDUP snapshot occupies the
-  (placement, chick-in date) slot at Populasi Awal, and `applyDailyMortality` requires a prior
-  snapshot strictly before the entry date — so the first MATI/AFKIR can be recorded from the day
-  after chick-in onward, not on day 0. Flag if day-0 deaths must be recordable. (Assumption A21.)
+
+**⚠️ STOP-and-ask refinements (Slice 9) — implemented at the current committed behavior; your call.**
+Both are farm-operations facts the SRS doesn't settle. Per your instruction I did NOT block the
+slice on them (they don't touch stock/role/date correctness). Tell me if a default is wrong and
+I'll change the one-line behavior + its test.
+
+1. **Day-0 (chick-in-day) mortality — currently NOT recordable (A21).** The chick-in seed HIDUP
+   snapshot holds the (placement, chick-in date) slot at Populasi Awal, so the daily record refuses
+   MATI/AFKIR on the chick-in day (they must be 0); the first mortality is the day after. If chicks
+   can die on arrival day and that must be captured, say so and I'll let day-0 MATI/AFKIR net off the
+   seed. (`src/lib/server/dailyRecords.ts` chick-in-day branch + `applyDailyMortalityTx`.)
+2. **MINGGU = floor(HARI / 7) (A19).** SRS §3.9 gives `MINGGU = HARI / 7` without stating floor vs a
+   1-based "week 1 starts at hatch". I used `Math.floor` (HARI 113 → 16, 120 → 17). If you want
+   week-starts-at-1 (`floor(HARI/7)+1`) or rounding, it's one line in `src/lib/flock.ts`.
+
+**Slice 9 decisions (resolved conservatively; flag any you'd change):**
+- **HD% and HIDUP frozen write-once; egg buckets live (A24).** The four buckets derive live from
+  collection and reconcile to grading by firming only the Retak/Plastik sub-split (the daily total
+  never moves). HD% and HIDUP are frozen at record creation and NOT silently recomputed if the
+  collection is edited afterwards (§5.3) — so record the day after that day's collection is complete.
+- **Feed block provisional until Slice 10 (A25).** PAKAN MASUK comes from feed mixing (Slice 10);
+  until then it's treated as 0, so TERSEDIA / REALISASI INTAKE / GRAM-EKOR / FCR are computed on read
+  (may be 0/negative) and are NOT yet persisted write-once. SISA inputs + BERAT TELUR are captured
+  now so history is complete; §5.3's freeze of FCR/INTAKE lands with Slice 10 when MASUK is real.
+- **MATI/AFKIR frozen once a daily record is saved (A26).** Editing changes feed leftovers / egg mass
+  / body weight / notes, not MATI/AFKIR (the HIDUP snapshot is write-once). A supervised MATI/AFKIR
+  correction with forward HIDUP propagation (FR-68's "and forward") is deferred.
+- **Same-day grading + collection lock + Superadmin override (A27).** Grading is tied to its
+  collection's production day (dates must match). Once a batch is SUBMITTED its collection is locked
+  — a plain edit is rejected (closes A12). A Superadmin may override, but the edit is refused if it
+  would strand the graded total over available, and its compensating Angkat Rak movements carry an
+  audit reason in the ledger; Admins get the hard lock. **My reading of your "grade a batch on a
+  later day than its collection" override** is exactly this Superadmin lock-override: collection and
+  grading stay attributed to the production day (which keeps stock + the daily bucket-reconcile
+  correct). I did NOT create grading records dated to a *different* day than their collection — that
+  would split a batch's stock across two dates and hide its Pecah sub-split from the production-day
+  daily record. If you specifically want later-dated grading records, tell me and I'll model it.
+- **Populasi Awal correction re-bases the whole HIDUP history (A28).** The Superadmin hatch shifts
+  every HIDUP snapshot (seed + forward) by the delta, refuses to drive any later HIDUP negative, and
+  is blocked once daily recording has begun (those records froze HIDUP/HD%). No persisted
+  "who-corrected" audit row (no audit-log table in scope yet).
+- **Buckets reconcile on ANY submitted grading, not only when every batch is graded (A29).** The
+  sub-split firms progressively; the daily total is unaffected either way.
+- **`resolvePlacementForDate` picks the newest placement covering the date (A30).** If a kandang is
+  emptied and re-populated on the SAME day (rare), the daily record attaches to the newer placement.
+- **Flock editing after chick-in is still locked, EXCEPT Populasi Awal (Slice 8 → refined in 9).**
+  Strain / chick-in date / placement age and the set of placements are fixed at creation; the
+  lifecycle mutations are Superadmin end-placement and now the narrow Superadmin **Populasi Awal
+  correction** (A28). Add a broader edit path if a mis-entered chick-in date/strain must be fixable.
+  (Assumption A20.)
 - **`HidupSnapshot` is a new model, not in SRS §7 (Slice 8).** Added to persist the running HIDUP
   write-once (rule 5.3) as one row per placement-day, per your instruction — seeded at chick-in,
   read latest-≤-date, never recomputed. The SRS §7 data model didn't list it. (Assumption A22.)
-- **One active placement per kandang is enforced in the service, not a DB constraint (Slice 8).**
-  The check runs inside `createFlock`'s transaction (Prisma can't express a partial unique index
-  declaratively). A raw partial index (`… WHERE status = 'ACTIVE'`) could be added later for
-  defense-in-depth. (Assumption A23.)
+- **One active placement per kandang — now DB-enforced too (Slice 8 → 9).** The in-service check in
+  `createFlock` remains (fires first, friendlier message), and migration #10 adds a raw-SQL partial
+  unique index `UNIQUE(farmhouseId) WHERE status='ACTIVE'` as the concurrency backstop. (Assumption A23.)
 - **Void reason ≥ 10 chars (Slice 7, revised per your A16 review).** The SRS says a void needs a
   "mandatory reason" without a length. Bumped from ≥ 3 to **≥ 10** in `voidSaleSchema`, `voidSale`,
   and the void form (`minLength`), with a test. Corrections remain ≥ 20 by explicit spec. (Assumption A16.)
@@ -142,6 +191,62 @@ pnpm db:studio               # prisma studio
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
   (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
 - **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Slice 9 — Daily farmhouse recording (+ 3 foundation items) ✅
+
+**Goal (BUILD_PLAN / SRS §3.10, CLAUDE.md §6):** one record per kandang per business day
+for the active placement; Admin types a few fields, the system derives HARI/MINGGU/HIDUP,
+the four egg buckets, HD%, the PAKAN block and FCR. Two commits: `feat(slice-9): foundation …`
+then `feat(slice-9): daily farmhouse recording`.
+
+### Foundation (commit 1 of 2)
+- **Partial unique index (A23).** Migration #10 adds raw-SQL
+  `CREATE UNIQUE INDEX Placement_farmhouseId_active_key ON Placement(farmhouseId) WHERE status='ACTIVE'`
+  — the DB backstop for one-active-placement-per-kandang. The in-service check stays (fires first,
+  friendlier message). Prisma's diff engine leaves the partial index alone (it can't represent it).
+- **Populasi Awal correction (A28).** `correctPopulasiAwal` — Superadmin-only escape hatch for a
+  chick-in typo (general flock editing stays locked, A20). Since HIDUP(day) = Populasi Awal −
+  cumulative(MATI+AFKIR), it shifts every HIDUP snapshot (seed + forward) by the delta, leaving each
+  day's MATI/AFKIR intact; refuses to drive any later HIDUP < 0; blocked once daily records exist.
+- **Same-day grading + collection lock + Superadmin override (A27, closes A12).** Explicit assertion
+  that a grading's business date equals its collection's; `updateCollection` rejects an edit once the
+  batch is graded (SUBMITTED) unless a Superadmin overrides — and even then refuses to strand the
+  grading over available, stamping the compensating movements with an audit reason. Admins get the
+  hard lock.
+
+### Daily recording (commit 2 of 2)
+- **Schema** → migration #11: `DailyRecord` (one per `[farmhouseId, date]`, FR-67). Admin inputs
+  MATI/AFKIR (int), SISA DIGUNAKAN/DIBUANG + BERAT TELUR + optional BERAT BADAN (Decimal kg — never
+  float), OBAT/VITAMIN notes, KETERANGAN. Frozen write-once (§5.3): `hidup` and `hdPercent`.
+- **`src/lib/daily.ts`** (pure, worked-example tested): `computeEggBuckets` (Utuh = A++..Mini +
+  Angkat Rak, Lunak, Pecah = Retak+Plastik, Kosong — reconciles to grading by firming only the
+  Pecah sub-split; daily total stable), `computeHdPercent` = (Utuh+Lunak+Pecah+Kosong)/HIDUP×100,
+  `computePakanTersedia` = MASUK + reusable leftover, `computeRealisasiIntake` = TERSEDIA −
+  (DIGUNAKAN+DIBUANG), `computeGramPerEkor` = INTAKE/HIDUP×1000, `computeFcr` = INTAKE/BERAT TELUR.
+- **`src/lib/server/dailyRecords.ts`:** resolves the active placement for the kandang/date; on
+  create, drives MATI/AFKIR through the now tx-aware `applyDailyMortalityTx` (so the HIDUP snapshot
+  ledger and the record commit together), freezes HIDUP + HD%, and stores the inputs — all atomic.
+  Day-0 mortality rejected (A21). Buckets/feed derive live on read (`liveEggBuckets`,
+  `previousReusableLeftover`). Edit keeps MATI/AFKIR frozen (A26); other fields update.
+- **Zod schema + Admin/Superadmin actions** (rule 5.5; Owner rejected). **UI:** `/daily` — kandang +
+  date selector → HARI/MINGGU/HIDUP, the four buckets (with the firmed Pecah split), a **provisional**
+  PAKAN/FCR block (MASUK = 0 until Slice 10), and the create/edit form; nav link.
+
+### Key decisions
+- **Write-once where stateful (§5.3):** HIDUP + HD% frozen at creation; buckets + feed derive live.
+  The PAKAN block is provisional (MASUK = 0) and NOT yet frozen — that lands with Slice 10 mixing,
+  which supplies MASUK, so FCR/INTAKE aren't frozen against a value that arrives later (A24/A25).
+- **HIDUP stays single-sourced:** `applyDailyMortality` refactored into a tx-aware core so the daily
+  record writes the snapshot inside its own transaction — no parallel HIDUP path.
+
+### Test status
+`pnpm test` → **98 passed** (23 files): +8 foundation (Populasi Awal re-base/guards, DB partial
+index, correction-action roles, collection lock/override/audit/strand-reject) and +6 daily
+(buckets & HD% & PAKAN & FCR worked examples, buckets reconcile without moving the total, HIDUP
+carry-forward via snapshot, one-per-kandang-day, day-0 rejected, MATI/AFKIR frozen on edit, Owner
+rejected / Admin creates). `tsc`, `eslint`, `next build` all clean.
 
 ---
 

@@ -210,6 +210,7 @@ model User {
   salesTransactions SalesTransaction[] @relation("SalesEnteredBy")
   voidedSales       SalesTransaction[] @relation("SalesVoidedBy")
   createdFlocks     Flock[]
+  dailyRecords      DailyRecord[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -247,6 +248,7 @@ model Farmhouse {
   collectionRecords CollectionRecord[]
   gradingRecords    GradingRecord[]
   placements        Placement[]
+  dailyRecords      DailyRecord[]
 }
 
 /// Effective-dated farmhouse→warehouse mapping (SRS §7 "Mapping Log"). Append-only:
@@ -513,6 +515,7 @@ model Placement {
   flock          Flock            @relation(fields: [flockId], references: [id])
   farmhouse      Farmhouse        @relation(fields: [farmhouseId], references: [id])
   hidupSnapshots HidupSnapshot[]
+  dailyRecords   DailyRecord[]
 
   @@index([farmhouseId, status])
   @@index([flockId])
@@ -536,4 +539,50 @@ model HidupSnapshot {
 
   @@unique([placementId, date])
   @@index([placementId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Daily farmhouse recording (Slice 9)
+// ---------------------------------------------------------------------------
+
+/// One record per kandang per business day for the active placement (SRS §3.10,
+/// FR-67). Admin types only a handful of yellow fields; the rest is derived. The
+/// stateful derived values are frozen write-once (§5.3): `hidup` (the day's running
+/// HIDUP, mirrored from HidupSnapshot) and `hdPercent`. The egg buckets are NOT
+/// stored — they derive live from collection (and reconcile to grading). The feed
+/// block (PAKAN TERSEDIA / REALISASI INTAKE / GRAM-EKOR / FCR) is derived on read for
+/// now; its write-once persistence lands with Slice 10 mixing, which supplies PAKAN
+/// MASUK — until then MASUK is treated as 0 and the feed block is provisional.
+model DailyRecord {
+  id            String   @id @default(cuid())
+  farmhouseId   String
+  placementId   String
+  date          DateTime @db.Date // business date (WITA)
+
+  // Admin inputs (the "yellow fields"). Feed quantities are kg (Decimal, never float).
+  mati          Int      @default(0)
+  afkir         Int      @default(0)
+  sisaDigunakan Decimal  @default(0) @db.Decimal(10, 3) // reusable leftover; carries to next day's TERSEDIA
+  sisaDibuang   Decimal  @default(0) @db.Decimal(10, 3) // discarded leftover
+  beratTelur    Decimal  @default(0) @db.Decimal(10, 3) // daily egg mass (kg), global daily figure
+  beratBadan    Decimal? @db.Decimal(10, 2) // sampled body weight (optional, weekly; record-only)
+  obatNote      String? // administration note only — never moves OVK stock
+  vitaminNote   String? // administration note only — never moves OVK stock
+  keterangan    String?
+
+  // Frozen derived, write-once at creation (§5.3).
+  hidup     Int // running HIDUP for the day (from the HidupSnapshot ledger)
+  hdPercent Decimal @db.Decimal(6, 2) // (Utuh+Lunak+Pecah+Kosong) / HIDUP * 100
+
+  enteredById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  farmhouse Farmhouse @relation(fields: [farmhouseId], references: [id])
+  placement Placement @relation(fields: [placementId], references: [id])
+  enteredBy User      @relation(fields: [enteredById], references: [id])
+
+  @@unique([farmhouseId, date]) // one record per kandang per business day (FR-67)
+  @@index([placementId, date])
+  @@index([farmhouseId, date])
 }

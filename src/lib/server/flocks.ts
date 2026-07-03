@@ -1,9 +1,12 @@
 import "server-only";
 
+import type { Prisma } from "@/generated/prisma/client";
 import { FlockStatus, PlacementStatus, RecordStatus } from "@/generated/prisma/enums";
 import { toBusinessDate } from "@/lib/dates";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { prisma, TX_OPTIONS } from "@/lib/server/db";
+
+type Tx = Prisma.TransactionClient;
 
 // Flock & placement lifecycle (SRS §3.9). Flock create/end are Superadmin-gated at
 // the action layer. HIDUP is a per-placement running value, persisted as a write-once
@@ -191,6 +194,14 @@ export async function correctPopulasiAwal(placementId: string, newPopulasiAwal: 
   if (delta === 0) {
     throw new ConflictError("That is already the Populasi Awal — nothing to correct.");
   }
+  // The hatch is for an early chick-in typo. Once daily records exist they have frozen
+  // HIDUP/HD% snapshots (§5.3) that a re-base would silently desync, so refuse then.
+  const recorded = await prisma.dailyRecord.count({ where: { placementId } });
+  if (recorded > 0) {
+    throw new ConflictError(
+      "Daily recording has already begun for this placement — Populasi Awal can no longer be corrected.",
+    );
+  }
 
   return prisma.$transaction(async (tx) => {
     const snapshots = await tx.hidupSnapshot.findMany({
@@ -236,12 +247,13 @@ export async function resolveHidup(placementId: string, asOf: Date): Promise<num
 }
 
 /**
- * Apply a day's MATI/AFKIR and persist the resulting HIDUP snapshot (write-once).
+ * Apply a day's MATI/AFKIR and persist the resulting HIDUP snapshot (write-once), on a
+ * caller-supplied transaction so the daily record can bundle it with its own write.
  * new HIDUP = the HIDUP entering the day (latest snapshot strictly BEFORE `date`) −
- * MATI − AFKIR. Rejects going below zero or overwriting an existing snapshot. Daily
- * MATI/AFKIR entry (the daily record) is Slice 9; this is the helper it builds on.
+ * MATI − AFKIR. Rejects going below zero or overwriting an existing snapshot.
  */
-export async function applyDailyMortality(
+export async function applyDailyMortalityTx(
+  tx: Tx,
   placementId: string,
   date: Date,
   mati: number,
@@ -252,7 +264,7 @@ export async function applyDailyMortality(
   }
   const on = toBusinessDate(date);
 
-  const entering = await prisma.hidupSnapshot.findFirst({
+  const entering = await tx.hidupSnapshot.findFirst({
     where: { placementId, date: { lt: on } },
     orderBy: { date: "desc" },
     select: { hidup: true },
@@ -265,12 +277,23 @@ export async function applyDailyMortality(
     throw new ConflictError("MATI + AFKIR exceed the live-hen count.");
   }
 
-  const existing = await prisma.hidupSnapshot.findUnique({
+  const existing = await tx.hidupSnapshot.findUnique({
     where: { placementId_date: { placementId, date: on } },
   });
   if (existing) {
     throw new ConflictError("A HIDUP snapshot for this placement-day already exists (write-once).");
   }
 
-  return prisma.hidupSnapshot.create({ data: { placementId, date: on, mati, afkir, hidup } });
+  return tx.hidupSnapshot.create({ data: { placementId, date: on, mati, afkir, hidup } });
+}
+
+/**
+ * Standalone MATI/AFKIR application (own transaction). The daily record (Slice 9) uses
+ * the tx-aware core above; this remains for direct/testing use.
+ */
+export function applyDailyMortality(placementId: string, date: Date, mati: number, afkir: number) {
+  return prisma.$transaction(
+    (tx) => applyDailyMortalityTx(tx, placementId, date, mati, afkir),
+    TX_OPTIONS,
+  );
 }
