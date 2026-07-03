@@ -1,6 +1,6 @@
 import "server-only";
 
-import { SizeHealthGrade, SourceType } from "@/generated/prisma/enums";
+import { GradingStatus, SizeHealthGrade, SourceType } from "@/generated/prisma/enums";
 import { toBusinessDate } from "@/lib/dates";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { prisma, TX_OPTIONS } from "@/lib/server/db";
@@ -178,8 +178,19 @@ export async function createCollection(key: CollectionKey, input: CollectionCoun
  * (kandang/date/batch) and maxBatchesAtEntry are immutable. Angkat Rak stock is
  * reconciled per Type by the delta (new − old): a positive delta posts an IN, a
  * negative delta an OUT — appended, never overwriting the original movements.
+ *
+ * Once this batch's grading is SUBMITTED the collection is LOCKED (closes A12): a plain
+ * edit is rejected so a submitted grading's reconcile can't be invalidated behind its
+ * back. `opts.allowGradedEdit` is a Superadmin-only override that permits the edit but
+ * still refuses to leave the submitted grading over-allocated (graded ≤ available), and
+ * stamps the compensating Angkat Rak movements with an audit reason.
  */
-export async function updateCollection(collectionId: string, input: CollectionCounts, ctx: Ctx) {
+export async function updateCollection(
+  collectionId: string,
+  input: CollectionCounts,
+  ctx: Ctx,
+  opts?: { allowGradedEdit?: boolean },
+) {
   const existing = await prisma.collectionRecord.findUnique({
     where: { id: collectionId },
     include: { angkatRakLifts: true },
@@ -202,6 +213,35 @@ export async function updateCollection(collectionId: string, input: CollectionCo
     current.set(lift.typeGradeId, { liftId: lift.id, qty: lift.quantity });
   }
   const typeIds = new Set<string>([...desired.keys(), ...current.keys()]);
+
+  // Collection lock: if this batch is already graded (SUBMITTED), the collection is
+  // frozen unless a Superadmin overrides — and even then it must not strand grading.
+  const submittedGrading = await prisma.gradingRecord.findFirst({
+    where: {
+      farmhouseId: existing.farmhouseId,
+      date,
+      batchNumber: existing.batchNumber,
+      status: GradingStatus.SUBMITTED,
+    },
+    include: { lineItems: { select: { quantity: true } } },
+  });
+  let auditReason: string | null = null;
+  if (submittedGrading) {
+    if (!opts?.allowGradedEdit) {
+      throw new ConflictError(
+        "This batch is already graded — its collection is locked. A Superadmin can override to correct it.",
+      );
+    }
+    const newAngkatRak = [...desired.values()].reduce((s, q) => s + q, 0);
+    const newAvailable = input.goodEggs - newAngkatRak;
+    const gradedTotal = submittedGrading.lineItems.reduce((s, li) => s + li.quantity, 0);
+    if (gradedTotal > newAvailable) {
+      throw new ConflictError(
+        `This edit would leave grading over-allocated: graded ${gradedTotal} pcs > available ${newAvailable} pcs. Adjust grading first.`,
+      );
+    }
+    auditReason = "Collection edited after grading (Superadmin override).";
+  }
 
   return prisma.$transaction(async (tx) => {
     await tx.collectionRecord.update({
@@ -243,6 +283,7 @@ export async function updateCollection(collectionId: string, input: CollectionCo
         unitUsed: "RAK",
         enteredById: ctx.userId,
         date,
+        reason: auditReason,
       };
       if (delta > 0) await recordInTx(tx, { ...movement, quantity: delta });
       else await recordOutTx(tx, { ...movement, quantity: -delta });

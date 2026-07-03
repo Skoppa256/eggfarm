@@ -20,7 +20,11 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 import { Role } from "@/generated/prisma/enums";
 import { ForbiddenError } from "@/lib/errors";
-import { createFlockAction, endPlacementAction } from "@/app/(app)/flocks/actions";
+import {
+  correctPopulasiAwalAction,
+  createFlockAction,
+  endPlacementAction,
+} from "@/app/(app)/flocks/actions";
 import { createSession } from "@/lib/server/auth";
 import { prisma } from "@/lib/server/db";
 import { hashPassword } from "@/lib/server/password";
@@ -75,6 +79,44 @@ describe("flock actions (rule 5.5 — Superadmin only)", () => {
     await expect(
       endPlacementAction(null, form({ placementId: "anything", endDate: "2026-08-01" })),
     ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("rejects a non-Superadmin (ADMIN) on correctPopulasiAwal", async () => {
+    await loginAs(Role.ADMIN);
+    await expect(
+      correctPopulasiAwalAction(null, form({ placementId: "anything", populasiAwal: "1000" })),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("lets a SUPERADMIN correct a placement's Populasi Awal (re-bases the seed HIDUP)", async () => {
+    const k1 = await freeKandang();
+    await loginAs(Role.SUPERADMIN);
+    const flock = await prisma.flock.create({
+      data: {
+        strain: "A",
+        chickInDate: new Date("2026-07-01T00:00:00Z"),
+        placementAge: 100,
+        createdById: (await prisma.user.findFirstOrThrow({ where: { role: Role.SUPERADMIN } })).id,
+      },
+    });
+    const placement = await prisma.placement.create({
+      data: {
+        flockId: flock.id,
+        farmhouseId: k1,
+        populasiAwal: 1000,
+        startDate: new Date("2026-07-01T00:00:00Z"),
+      },
+    });
+    await prisma.hidupSnapshot.create({
+      data: { placementId: placement.id, date: new Date("2026-07-01T00:00:00Z"), hidup: 1000 },
+    });
+
+    const result = await correctPopulasiAwalAction(
+      null,
+      form({ placementId: placement.id, populasiAwal: "1010" }),
+    );
+    expect(result.ok).toBe(true);
+    expect((await prisma.placement.findUnique({ where: { id: placement.id } }))?.populasiAwal).toBe(1010);
   });
 
   it("lets a SUPERADMIN chick-in (creates flock + placement + seed HIDUP)", async () => {

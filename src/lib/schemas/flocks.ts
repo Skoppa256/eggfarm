@@ -19,3 +19,9 @@ export const endPlacementSchema = z.object({
   placementId: z.string().min(1),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date."),
 });
+
+// Superadmin-only Populasi Awal correction (narrow chick-in-typo escape hatch).
+export const correctPopulasiAwalSchema = z.object({
+  placementId: z.string().min(1),
+  populasiAwal: z.coerce.number().int("whole number").min(1, "must be at least 1"),
+});

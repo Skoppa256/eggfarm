@@ -171,6 +171,57 @@ export async function endPlacement(placementId: string, endDate: Date) {
 }
 
 /**
+ * Correct a placement's Populasi Awal — a narrow, Superadmin-only escape hatch for a
+ * chick-in typo (general flock editing stays locked, A20). Because HIDUP(day) =
+ * Populasi Awal − cumulative(MATI+AFKIR), changing Populasi Awal by `delta` shifts
+ * EVERY HIDUP snapshot (seed and all forward days) by the same `delta` while leaving
+ * each day's recorded MATI/AFKIR intact. Rejects a shift that would drive any day's
+ * HIDUP negative. This is a supervised correction, not a silent recompute (§5.3): it
+ * runs only when a Superadmin explicitly invokes it.
+ */
+export async function correctPopulasiAwal(placementId: string, newPopulasiAwal: number) {
+  if (!Number.isInteger(newPopulasiAwal) || newPopulasiAwal <= 0) {
+    throw new ConflictError("Populasi Awal must be a positive whole number.");
+  }
+  const placement = await prisma.placement.findUnique({ where: { id: placementId } });
+  if (!placement) {
+    throw new NotFoundError("Placement not found.");
+  }
+  const delta = newPopulasiAwal - placement.populasiAwal;
+  if (delta === 0) {
+    throw new ConflictError("That is already the Populasi Awal — nothing to correct.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const snapshots = await tx.hidupSnapshot.findMany({
+      where: { placementId },
+      select: { hidup: true },
+    });
+    const minHidup = snapshots.reduce((m, s) => Math.min(m, s.hidup), Infinity);
+    if (Number.isFinite(minHidup) && minHidup + delta < 0) {
+      throw new ConflictError(
+        "That correction would drive a later HIDUP below zero (too many deaths already recorded).",
+      );
+    }
+
+    await tx.placement.update({
+      where: { id: placementId },
+      data: { populasiAwal: newPopulasiAwal },
+    });
+    // Uniform re-base: every snapshot (seed + forward) shifts by the same delta.
+    await tx.hidupSnapshot.updateMany({
+      where: { placementId },
+      data: { hidup: { increment: delta } },
+    });
+
+    return tx.placement.findUnique({
+      where: { id: placementId },
+      include: { flock: true, farmhouse: true },
+    });
+  }, TX_OPTIONS);
+}
+
+/**
  * The running HIDUP for a placement at the end of `asOf`: the latest snapshot with
  * date ≤ asOf. Reads a persisted snapshot — never recomputed from birth. null if the
  * placement had not been chicked-in by then.

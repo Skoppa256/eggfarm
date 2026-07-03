@@ -25,11 +25,14 @@ export function CollectionForm({
   gradeTypes,
   hiddenFields,
   defaults,
+  canOverrideLock = false,
 }: {
   mode: "create" | "edit";
   gradeTypes: TypeOption[];
   hiddenFields: { name: string; value: string }[];
   defaults: CollectionFormDefaults;
+  /** Superadmin-only: show the "override grading lock" opt-in on an edit form. */
+  canOverrideLock?: boolean;
 }) {
   const action = mode === "create" ? createCollectionAction : updateCollectionAction;
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(action, null);
@@ -81,6 +84,13 @@ export function CollectionForm({
         Remarks
         <input name="remarks" defaultValue={defaults.remarks} className={fieldClass} />
       </label>
+
+      {mode === "edit" && canOverrideLock && (
+        <label className="flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+          <input type="checkbox" name="allowGradedEdit" />
+          Override grading lock (Superadmin) — edit even if this batch is already graded
+        </label>
+      )}
 
       <div className="flex items-center gap-3">
         <button

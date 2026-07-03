@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { FlockStatus, PlacementStatus, Role } from "@/generated/prisma/enums";
 import { ConflictError } from "@/lib/errors";
 import { prisma } from "@/lib/server/db";
-import { applyDailyMortality, createFlock, endPlacement, resolveHidup } from "@/lib/server/flocks";
+import {
+  applyDailyMortality,
+  correctPopulasiAwal,
+  createFlock,
+  endPlacement,
+  resolveHidup,
+} from "@/lib/server/flocks";
 
 import { resetDb } from "../../../test/helpers";
 
@@ -132,5 +138,61 @@ describe("end placement — frees kandang, ends flock, retains history", () => {
     await expect(endPlacement(p2.id, D("2026-08-03"))).rejects.toBeInstanceOf(
       ConflictError,
     );
+  });
+});
+
+describe("correct Populasi Awal — narrow chick-in-typo escape hatch (A20/A23)", () => {
+  it("re-bases the whole HIDUP history by the delta, seed and forward", async () => {
+    const f = await setup();
+    const flock = await createFlock(
+      { strain: "A", chickInDate: D("2026-07-01"), placementAge: 100, placements: [{ farmhouseId: f.k1, populasiAwal: 1000 }] },
+      { userId: f.userId },
+    );
+    const p = (await prisma.placement.findFirstOrThrow({ where: { flockId: flock.id } })).id;
+    await applyDailyMortality(p, D("2026-07-02"), 5, 2); // 1000 - 7 = 993
+    await applyDailyMortality(p, D("2026-07-03"), 3, 0); // 993 - 3 = 990
+
+    // Typo: it was really 1010, not 1000 (+10 to every day).
+    await correctPopulasiAwal(p, 1010);
+    expect((await prisma.placement.findUnique({ where: { id: p } }))?.populasiAwal).toBe(1010);
+    expect(await resolveHidup(p, D("2026-07-01"))).toBe(1010); // seed
+    expect(await resolveHidup(p, D("2026-07-02"))).toBe(1003); // 1010 - 7
+    expect(await resolveHidup(p, D("2026-07-03"))).toBe(1000); // 1010 - 10
+
+    // MATI/AFKIR are untouched by the re-base.
+    const day2 = await prisma.hidupSnapshot.findFirstOrThrow({ where: { placementId: p, date: D("2026-07-02") } });
+    expect([day2.mati, day2.afkir]).toEqual([5, 2]);
+  });
+
+  it("rejects a correction that would drive a later HIDUP below zero, and a no-op", async () => {
+    const f = await setup();
+    const flock = await createFlock(
+      { strain: "A", chickInDate: D("2026-07-01"), placementAge: 100, placements: [{ farmhouseId: f.k1, populasiAwal: 100 }] },
+      { userId: f.userId },
+    );
+    const p = (await prisma.placement.findFirstOrThrow({ where: { flockId: flock.id } })).id;
+    await applyDailyMortality(p, D("2026-07-02"), 90, 0); // 100 - 90 = 10
+
+    // Lowering Populasi Awal to 80 would make day-2 HIDUP = -10.
+    await expect(correctPopulasiAwal(p, 80)).rejects.toBeInstanceOf(ConflictError);
+    await expect(correctPopulasiAwal(p, 100)).rejects.toBeInstanceOf(ConflictError); // no-op
+    expect((await prisma.placement.findUnique({ where: { id: p } }))?.populasiAwal).toBe(100);
+    expect(await resolveHidup(p, D("2026-07-02"))).toBe(10); // unchanged
+  });
+});
+
+describe("one ACTIVE placement per kandang — DB partial unique index (A23)", () => {
+  it("rejects a second ACTIVE placement inserted directly for the same kandang", async () => {
+    const f = await setup();
+    const flock = await createFlock(
+      { strain: "A", chickInDate: D("2026-07-01"), placementAge: 100, placements: [{ farmhouseId: f.k1, populasiAwal: 500 }] },
+      { userId: f.userId },
+    );
+    // Bypass the service check — the partial unique index must still stop it.
+    await expect(
+      prisma.placement.create({
+        data: { flockId: flock.id, farmhouseId: f.k1, populasiAwal: 400, startDate: D("2026-07-02") },
+      }),
+    ).rejects.toThrow();
   });
 });

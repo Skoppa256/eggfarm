@@ -100,6 +100,12 @@ async function requireCollectionAndSequential(
   if (!collection) {
     throw new ConflictError(`No collection for batch ${batchNumber} — record the collection first.`);
   }
+  // Same-WITA-day invariant: a grading is tied to its collection's production day, so
+  // its business date must equal the collection's. The lookup above keys on `date`, so
+  // this holds by construction; the explicit check documents and hard-enforces it.
+  if (toBusinessDate(collection.date).getTime() !== date.getTime()) {
+    throw new ConflictError("Grading must be recorded on the same business day as its collection.");
+  }
   if (batchNumber > 1) {
     const prev = await tx.gradingRecord.findUnique({
       where: whereKey(farmhouseId, date, batchNumber - 1),

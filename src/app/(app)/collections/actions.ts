@@ -95,8 +95,13 @@ export async function updateCollectionAction(
   const counts = parseCounts(formData);
   if ("error" in counts) return { ok: false, error: counts.error };
 
+  // Editing a graded-and-locked collection requires a Superadmin who explicitly opts in
+  // (the override checkbox). Admins never get the override — the lock is hard for them.
+  const allowGradedEdit =
+    user.role === "SUPERADMIN" && formData.get("allowGradedEdit") === "on";
+
   try {
-    await updateCollection(collectionId, counts, { userId: user.id });
+    await updateCollection(collectionId, counts, { userId: user.id }, { allowGradedEdit });
     revalidatePath(PATH);
     return { ok: true, message: "Saved." };
   } catch (err) {

@@ -92,6 +92,7 @@ export default async function CollectionsPage({
           dateStr={dateStr}
           gradeTypes={gradeTypes}
           warehouseName={warehouseName}
+          canOverrideLock={user.role === "SUPERADMIN"}
         />
       ) : (
         <p className="text-sm text-zinc-500">Choose a kandang and date, then Load.</p>
@@ -105,11 +106,13 @@ async function BatchSlots({
   dateStr,
   gradeTypes,
   warehouseName,
+  canOverrideLock,
 }: {
   farmhouseId: string;
   dateStr: string;
   gradeTypes: { id: string; name: string }[];
   warehouseName: Map<string, string>;
+  canOverrideLock: boolean;
 }) {
   const date = new Date(`${dateStr}T00:00:00Z`);
   const [warehouseId, maxBatches, existing] = await Promise.all([
@@ -181,6 +184,7 @@ async function BatchSlots({
                     ]
               }
               defaults={defaults}
+              canOverrideLock={canOverrideLock}
             />
           </div>
         );

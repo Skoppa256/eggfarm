@@ -7,6 +7,7 @@ import { getSessionUser } from "@/lib/server/auth";
 import { getFlock, resolveHidup } from "@/lib/server/flocks";
 
 import { EndPlacementForm } from "./end-placement-form";
+import { PopulasiAwalForm } from "./populasi-awal-form";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +84,13 @@ export default async function FlockDetailPage({ params }: { params: Promise<{ id
                   <td className="px-4 py-2 font-medium">
                     {p.farmhouse.name} ({p.farmhouse.code})
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{p.populasiAwal}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    {isSuperadmin ? (
+                      <PopulasiAwalForm placementId={p.id} current={p.populasiAwal} />
+                    ) : (
+                      p.populasiAwal
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-right tabular-nums">{p.hidupToday ?? "—"}</td>
                   <td className="px-4 py-2">
                     <span

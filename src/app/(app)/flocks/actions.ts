@@ -5,9 +5,19 @@ import { redirect } from "next/navigation";
 
 import type { ActionResult } from "@/lib/action-result";
 import { AppError } from "@/lib/errors";
-import { createFlockSchema, endPlacementSchema, placementSchema } from "@/lib/schemas/flocks";
+import {
+  correctPopulasiAwalSchema,
+  createFlockSchema,
+  endPlacementSchema,
+  placementSchema,
+} from "@/lib/schemas/flocks";
 import { requireRole } from "@/lib/server/auth";
-import { createFlock, endPlacement, type PlacementInput } from "@/lib/server/flocks";
+import {
+  correctPopulasiAwal,
+  createFlock,
+  endPlacement,
+  type PlacementInput,
+} from "@/lib/server/flocks";
 
 /** Read the dynamic `placement.<i>.*` rows, skipping blank ones. */
 function readPlacements(formData: FormData): PlacementInput[] | { error: string } {
@@ -95,6 +105,31 @@ export async function endPlacementAction(
     revalidatePath("/flocks");
     if (placement) revalidatePath(`/flocks/${placement.flockId}`);
     return { ok: true, message: "Placement ended; kandang freed." };
+  } catch (err) {
+    if (err instanceof AppError) return { ok: false, error: err.message };
+    throw err;
+  }
+}
+
+export async function correctPopulasiAwalAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  // Rule 5.5: correcting Populasi Awal is a Superadmin-only escape hatch (A20/A23).
+  await requireRole("SUPERADMIN");
+
+  const parsed = correctPopulasiAwalSchema.safeParse({
+    placementId: formData.get("placementId"),
+    populasiAwal: formData.get("populasiAwal"),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  try {
+    const placement = await correctPopulasiAwal(parsed.data.placementId, parsed.data.populasiAwal);
+    revalidatePath("/flocks");
+    if (placement) revalidatePath(`/flocks/${placement.flockId}`);
+    return { ok: true, message: "Populasi Awal corrected; HIDUP re-based." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

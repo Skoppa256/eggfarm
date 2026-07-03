@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { GradingStatus, Role, SizeHealthGrade, SourceType } from "@/generated/prisma/enums";
 import { ConflictError } from "@/lib/errors";
-import { createCollection } from "@/lib/server/collections";
+import { createCollection, updateCollection } from "@/lib/server/collections";
 import { prisma } from "@/lib/server/db";
 import { createFarmhouse } from "@/lib/server/farmhouses";
 import { findGrading, saveDraft, submitGrading } from "@/lib/server/grading";
@@ -176,5 +176,57 @@ describe("grading — post-submit edit reconciles by delta", () => {
     );
     expect(await skuQty(whA, SizeHealthGrade.A, normal)).toBe(100);
     expect(await skuQty(whA, SizeHealthGrade.B, normal)).toBe(50);
+  });
+});
+
+describe("collection lock after grading submit (A12)", () => {
+  const emptyCounts = { telurRetak: 0, telurLunak: 0, telurKosong: 0 };
+
+  it("locks the collection once graded; a plain edit is rejected, stock unchanged", async () => {
+    const { userId, whA, normal, farmhouseId } = await setup();
+    const collection = await collect(farmhouseId, userId, 1, 3000);
+    const key = { farmhouseId, date: DATE, batchNumber: 1 };
+    await submitGrading(key, { lines: [{ sizeHealthGrade: SizeHealthGrade.A, typeGradeId: normal, quantity: 300 }] }, { userId });
+
+    await expect(
+      updateCollection(collection.id, { goodEggs: 3300, ...emptyCounts, lifts: [] }, { userId }),
+    ).rejects.toBeInstanceOf(ConflictError);
+    // Collection counts and stock are untouched by the rejected edit.
+    expect((await prisma.collectionRecord.findUnique({ where: { id: collection.id } }))?.goodEggs).toBe(3000);
+    expect(await skuQty(whA, SizeHealthGrade.A, normal)).toBe(300);
+  });
+
+  it("Superadmin override edits the locked collection and stamps an audit reason", async () => {
+    const { userId, whA, normal, farmhouseId } = await setup();
+    // Good 3000, Angkat Rak 300 → available 2700.
+    const collection = await collect(farmhouseId, userId, 1, 3000, 300, normal);
+    const key = { farmhouseId, date: DATE, batchNumber: 1 };
+    await submitGrading(key, { lines: [{ sizeHealthGrade: SizeHealthGrade.A, typeGradeId: normal, quantity: 300 }] }, { userId });
+
+    // Override: bump Angkat Rak 300 → 600 (available 2400 ≥ graded 300). Posts a delta IN.
+    await updateCollection(
+      collection.id,
+      { goodEggs: 3000, ...emptyCounts, lifts: [{ typeGradeId: normal, quantity: 600 }] },
+      { userId },
+      { allowGradedEdit: true },
+    );
+    expect(await skuQty(whA, SizeHealthGrade.ANGKAT_RAK, normal)).toBe(600);
+    const overrideMoves = (await getLedger(whA)).filter((m) =>
+      m.reason?.includes("Superadmin override"),
+    );
+    expect(overrideMoves.length).toBeGreaterThan(0);
+  });
+
+  it("rejects an override that would strand grading over available", async () => {
+    const { userId, normal, farmhouseId } = await setup();
+    const collection = await collect(farmhouseId, userId, 1, 300); // available 300
+    const key = { farmhouseId, date: DATE, batchNumber: 1 };
+    await submitGrading(key, { lines: [{ sizeHealthGrade: SizeHealthGrade.A, typeGradeId: normal, quantity: 300 }] }, { userId });
+
+    // Lowering Good to 200 → available 200 < graded 300.
+    await expect(
+      updateCollection(collection.id, { goodEggs: 200, ...emptyCounts, lifts: [] }, { userId }, { allowGradedEdit: true }),
+    ).rejects.toBeInstanceOf(ConflictError);
+    expect((await prisma.collectionRecord.findUnique({ where: { id: collection.id } }))?.goodEggs).toBe(300);
   });
 });
