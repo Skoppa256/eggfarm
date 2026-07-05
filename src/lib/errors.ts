@@ -55,3 +55,21 @@ export class InsufficientIngredientError extends AppError {
     );
   }
 }
+
+/**
+ * An OVK office→kandang transfer would drive office stock negative. The transfer is
+ * rejected with no write; the message names the short item and its base unit (SRS FR-97,
+ * CLAUDE.md §5.4 mirror for OVK stock).
+ */
+export class InsufficientOvkError extends AppError {
+  constructor(
+    readonly item: string,
+    readonly available: string,
+    readonly requested: string,
+    readonly unit: string,
+  ) {
+    super(
+      `Insufficient ${item}: have ${available} ${unit}, need ${requested} ${unit}.`,
+    );
+  }
+}

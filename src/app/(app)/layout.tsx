@@ -15,6 +15,7 @@ function navLinks(role: Role): { href: string; label: string }[] {
     links.push({ href: "/daily", label: "Daily" });
     links.push({ href: "/ingredients", label: "Ingredients" });
     links.push({ href: "/mixing", label: "Mixing" });
+    links.push({ href: "/ovk", label: "OVK" });
     links.push({ href: "/sales", label: "Sales" });
     links.push({ href: "/buyers", label: "Buyers" });
     links.push({ href: "/farmhouses", label: "Farmhouses" });

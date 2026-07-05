@@ -4,18 +4,17 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 10)
+## CURRENT STATUS (updated after Slice 11)
 
-- **Slices complete & committed:** Slices 1–9, and **Slice 10 (PAKAN — feed ingredient
-  master + central stock ledger + deliveries, and feed mixing + JENIS + pull-list)**, in
-  two commits (`…master, stock ledger & deliveries` then `…mixing, JENIS & pull-list`).
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **118/118 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 11 (OVK inventory) — one central office store; delivery in, office→kandang
-  transfer is the stock-down event; daily OBAT/VITAMIN notes stay decoupled (already so).
-- **The Slice 9 feed block is now real:** mixing supplies PAKAN MASUK, which posts write-once
-  onto the daily record and freezes TERSEDIA/INTAKE/GRAM-EKOR/FCR + JENIS (§5.3).
-- **⚠️ TWO STOP-and-ask refinements from Slice 9 are still awaiting your call** (day-0
-  mortality, MINGGU convention) — unchanged; see "Needs your review".
+- **Slices complete & committed:** Slices 1–10, **three confirmed-fact fixes** (MINGGU =
+  ceil, day-0 mortality, ingredient correction — each its own commit), and **Slice 11
+  (OVK — Obat/Vitamin/Chemical inventory)**.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **133/133 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 12 (VAKSIN logging) — activity log only, no inventory; the daily VAKSIN
+  field derives from it (SRS §3.13).
+- **No open STOP-and-ask items.** The two Slice 9 refinements are now RESOLVED by confirmed
+  farm facts: **A19** MINGGU = ceil(age/7) (day-120 = week 18); **A21** day-0 mortality is
+  recordable (nets off Populasi Awal). **A31** closed: supervised ingredient correction built.
 - **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
   (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
@@ -32,7 +31,8 @@ Running log of what was built, slice by slice. Newest summary on top.
 4. `slice3_config_master_data` · 5. `slice4_collection_input` · 6. `slice5_grading` ·
 7. `slice6_low_stock_thresholds` · 8. `slice7_buyers_sales` · 9. `slice8_flock_placement` ·
 10. `slice9_placement_active_unique` (raw-SQL partial index) · 11. `slice9_daily_record` ·
-12. `slice10_pakan` (ingredient master + stock ledger + mixing tables + DailyRecord feed columns).
+12. `slice10_pakan` (ingredient master + stock ledger + mixing tables + DailyRecord feed columns) ·
+13. `slice11_ovk` (OVK item master + unit conversions + office stock ledger).
 
 **Note on the partial index (#10):** `Placement_farmhouseId_active_key` is a partial
 UNIQUE index (`WHERE status = 'ACTIVE'`) that Prisma can't express in `schema.prisma`, so
@@ -88,19 +88,18 @@ pnpm db:studio               # prisma studio
 
 ### Needs your review
 
-**⚠️ STOP-and-ask refinements (Slice 9) — implemented at the current committed behavior; your call.**
-Both are farm-operations facts the SRS doesn't settle. Per your instruction I did NOT block the
-slice on them (they don't touch stock/role/date correctness). Tell me if a default is wrong and
-I'll change the one-line behavior + its test.
+**✅ RESOLVED by confirmed farm facts (three foundation-fix commits, before Slice 11):**
+- **A19 → MINGGU = ceil(age/7).** The farm counts by bird age, so day-120 = week 18, day-119
+  (a 7-multiple) = week 17. `computeMinggu` now uses `Math.ceil` (was `floor`). Tests: 119→17,
+  120→18, 126→18, 127→19. (commit `fix: MINGGU = ceil(age/7)`.)
+- **A21 → day-0 (chick-in-day) mortality is recordable.** Arrival-day deaths net off Populasi
+  Awal: HIDUP(day-0) = Populasi Awal − MATI₀ − AFKIR₀. `applyDailyMortalityTx` gained a day-0
+  branch that UPDATES the seed snapshot (write-once), and it composes with the Populasi Awal
+  correction (both re-base cleanly). The daily form no longer locks chick-in-day MATI/AFKIR.
+- **A31 closed → supervised ingredient correction.** `recordIngredientCorrection` (immutable
+  CORRECTION movement, pre/post, reason ≥ 20) via `ingredientLedger.ts` only; Admin/Superadmin.
 
-1. **Day-0 (chick-in-day) mortality — currently NOT recordable (A21).** The chick-in seed HIDUP
-   snapshot holds the (placement, chick-in date) slot at Populasi Awal, so the daily record refuses
-   MATI/AFKIR on the chick-in day (they must be 0); the first mortality is the day after. If chicks
-   can die on arrival day and that must be captured, say so and I'll let day-0 MATI/AFKIR net off the
-   seed. (`src/lib/server/dailyRecords.ts` chick-in-day branch + `applyDailyMortalityTx`.)
-2. **MINGGU = floor(HARI / 7) (A19).** SRS §3.9 gives `MINGGU = HARI / 7` without stating floor vs a
-   1-based "week 1 starts at hatch". I used `Math.floor` (HARI 113 → 16, 120 → 17). If you want
-   week-starts-at-1 (`floor(HARI/7)+1`) or rounding, it's one line in `src/lib/flock.ts`.
+**No open blocking questions.** The items below are documented decisions — flag any you'd change.
 
 **Slice 9 decisions (resolved conservatively; flag any you'd change):**
 - **HD% and HIDUP frozen write-once; egg buckets live (A24).** The four buckets derive live from
@@ -134,20 +133,22 @@ I'll change the one-line behavior + its test.
   emptied and re-populated on the SAME day (rare), the daily record attaches to the newer placement.
 
 **Slice 10 (PAKAN) decisions (resolved conservatively; flag any you'd change):**
-- **Ingredient stock mirrors the egg ledger (A31).** `ingredientLedger.ts` is the sole writer of
-  central ingredient stock — an append-only `IngredientMovement` ledger + an `IngredientStock`
-  balance cache, FOR-UPDATE-locked, kg in Decimal (never float), rejecting an over-draw atomically.
-  A supervised ingredient *correction* path isn't built yet (the `IngredientSourceType.CORRECTION`
-  value is reserved); to fix a mis-keyed delivery today you'd record a compensating delivery.
+- **Ingredient stock mirrors the egg ledger (A31 — now CLOSED).** `ingredientLedger.ts` is the sole
+  writer of central ingredient stock — an append-only `IngredientMovement` ledger + an
+  `IngredientStock` balance cache, FOR-UPDATE-locked, kg in Decimal (never float), rejecting an
+  over-draw atomically. A supervised ingredient **correction** (`recordIngredientCorrection` —
+  immutable CORRECTION with pre/post + reason ≥ 20) is now built (fix commit), mirroring egg
+  corrections; to fix a wrong correction, submit a second one.
 - **Mixing is confirm-once per kandang/day (A32).** Confirming freezes the requirement/MASUK/JENIS
   and draws every line down. There's no editing a confirmed mix (a mistaken mix would need a
   reversal/correction path, deferred) — this keeps MASUK write-once and the draw-down un-double-counted.
 - **No-mix day draws nothing at all (A33).** When leftover ≥ requirement → TOTAL CAMPUR 0, so no
   ingredient is drawn (mains 0 AND fixed supplements skipped) — the whole mix is a stock no-op; the
   recipe is still logged (lines at weight 0) for next-day pre-fill, and JENIS is still derived.
-- **Ingredient unit conversions not built (A34).** FR-80's optional conversions (e.g. 1 karung = N
-  kg) are out; `baseUnit` is kg and deliveries/mixing are entered in kg. Add a conversion table if
-  sack/bag entry is wanted.
+- **Ingredient unit conversions not wired to feed yet (A34).** FR-80's optional feed conversions
+  (e.g. 1 karung = N kg) aren't wired into feed delivery/mixing; `baseUnit` is kg and entries are in
+  kg. But the general **per-item unit-conversion mechanism is now built in Slice 11** (`src/lib/ovk.ts`
+  `conversionFactor`/`convertToBaseUnit` + `OvkUnitConversion`); porting it to feed is a small follow-up.
 - **Mains-% tolerance (A35).** Main-feed percentages must sum to 100% within ±0.01. Fixed
   supplements/premix are entered in kg and are never scaled by netting.
 - **Requirement HIDUP (A36).** The requirement uses the latest HIDUP snapshot ≤ the consumption day
@@ -156,6 +157,18 @@ I'll change the one-line behavior + its test.
 - **PAKAN MASUK freeze is first-write-wins (A37).** The daily record freezes its feed block from the
   mix at record creation (mix already exists — the norm) OR when the mix is confirmed (record exists
   first); whichever happens first. Because mixing is confirm-once, MASUK is never rewritten.
+
+**Slice 11 (OVK) decisions (resolved conservatively; flag any you'd change):**
+- **OVK supervised correction included (A38).** Beyond the two FRs (delivery + transfer), I built a
+  `recordOvkCorrection` (immutable CORRECTION, pre/post, reason ≥ 20) so the "one OVK stock path"
+  is complete and matches the ingredient/egg ledgers. It's Admin/Superadmin, Owner-rejected. If you
+  consider it out of scope, it's isolated and easy to drop.
+- **Pemakaian report shows the entered quantity + unit (A39).** Stock is held in the base unit, but
+  the report and movement history display what was physically transferred (e.g. "2 pcs"), matching
+  the farm's Catatan Pemakaian sheet. Both the entered value/unit and the base magnitude are stored.
+- **OVK transfer is the only stock-out; daily notes never move stock (A40).** DailyRecord
+  OBAT/VITAMIN remain free-text notes (Slice 9); no link to OVK items and no stock effect (FR-94).
+  Chemicals have no daily field.
 - **Flock editing after chick-in is still locked, EXCEPT Populasi Awal (Slice 8 → refined in 9).**
   Strain / chick-in date / placement age and the set of placements are fixed at creation; the
   lifecycle mutations are Superadmin end-placement and now the narrow Superadmin **Populasi Awal
@@ -216,6 +229,61 @@ I'll change the one-line behavior + its test.
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
   (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
 - **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Foundation fixes (before Slice 11) — three confirmed-fact resolutions ✅
+
+Each its own commit; all gates green.
+- **`fix: MINGGU = ceil(age/7)` (A19 resolved).** The farm counts by bird age → day-120 =
+  week 18, day-119 = week 17. `computeMinggu` uses `Math.ceil` (was `floor`).
+- **`fix: day-0 mortality recordable` (A21 resolved).** Arrival-day deaths net off Populasi
+  Awal via a day-0 branch in `applyDailyMortalityTx` that UPDATES the seed snapshot
+  (write-once) and composes with the Populasi Awal correction. Daily form unlocks
+  chick-in-day MATI/AFKIR.
+- **`feat: supervised ingredient stock correction` (A31 closed).** `recordIngredientCorrection`
+  via `ingredientLedger.ts` — immutable CORRECTION with pre/post + reason ≥ 20; Admin/Superadmin.
+
+---
+
+## Slice 11 — OVK (Obat / Vitamin / Chemical) inventory ✅
+
+**Goal (BUILD_PLAN / SRS §3.12, CLAUDE.md §6):** one central office store; Superadmin item
+master with per-item unit conversions; Admin deliveries (stock in) and office→kandang
+transfers (the stock-reduction event); a per-kandang Pemakaian report; daily OBAT/VITAMIN
+notes stay decoupled from stock.
+
+### What was built
+- **Schema** → migration #13: `OvkItem` master (name, category Obat/Vitamin/Chemical, base
+  unit) + `OvkUnitConversion` (1 unitName = factor × baseUnit) + `OvkStock` (balance cache) +
+  `OvkMovement` (append-only ledger: DELIVERY in / TRANSFER out / CORRECTION).
+- **`ovkLedger.ts` — the ONLY writer of office OVK stock (rule 5.4 mirror).** FOR-UPDATE-locked
+  core; deliveries increase stock; **transfers are the stock-reduction event**, attributed to a
+  kandang with an optional note, refusing to go negative (`InsufficientOvkError` names the short
+  item, FR-97); a supervised CORRECTION carries pre/post + reason. Stock is held in each item's
+  base unit (Decimal); entries in a converted unit are converted here. `pemakaianReport` lists a
+  kandang's transfers over a date range (FR-95).
+- **Pure `src/lib/ovk.ts`** unit-conversion mechanism (`conversionFactor` / `convertToBaseUnit`)
+  — worked-example tested (botol↔liter, pcs↔gram); **reusable for feed karung→kg** (A34/A35).
+  **`ovkItems.ts`** master CRUD (with conversion rows).
+- **Zod + actions** (master = Superadmin; delivery/transfer/correction = Admin/Superadmin; Owner
+  rejected, rule 5.5). **UI:** `/ovk` (office stock, delivery, transfer with item→unit dropdown,
+  correction, Superadmin master with dynamic conversion rows, recent movements) + `/ovk/pemakaian`
+  (per-kandang usage report over a date range); nav link.
+- **Decoupled from daily notes:** DailyRecord OBAT/VITAMIN stay free-text; no OVK stock moves from
+  them (FR-94), verified by test.
+
+### Key decisions
+- **Rule-5.4 discipline extended to OVK:** one ledger writes office stock (delivery/transfer/
+  correction), exactly as the egg and ingredient ledgers. Same locked-core + reject-negative posture.
+- **Per-item unit conversions** with the base unit as the stock unit; the report shows the entered
+  unit (A39). See A38 (correction included) / A40 (notes never move stock).
+
+### Test status
+`pnpm test` → **133 passed** (31 files): +12 for the three fixes and +11 for OVK (delivery↑ with
+conversion; transfer↓ + pemakaian report; negative transfer refused naming the item; botol↔liter /
+pcs↔gram conversion; daily note moves no OVK stock; supervised correction pre/post + <20-char reason
+rejected; master Superadmin-only; delivery/transfer Owner-rejected). `tsc`, `eslint`, `next build` clean.
 
 ---
 

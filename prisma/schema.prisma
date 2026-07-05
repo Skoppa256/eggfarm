@@ -114,6 +114,20 @@ enum MixLineKind {
   FIXED_WEIGHT
 }
 
+/// OVK item category (SRS FR-91). Chemicals have no daily-record field.
+enum OvkCategory {
+  OBAT
+  VITAMIN
+  CHEMICAL
+}
+
+/// What originated an OVK office-stock movement (mirror of the ingredient ledger).
+enum OvkSourceType {
+  DELIVERY // Admin delivery to the office — stock IN
+  TRANSFER // office → kandang transfer — stock OUT (the stock-reduction event)
+  CORRECTION // supervised office-stock correction
+}
+
 // ---------------------------------------------------------------------------
 // Master data
 // ---------------------------------------------------------------------------
@@ -236,6 +250,7 @@ model User {
   dailyRecords        DailyRecord[]
   ingredientMovements IngredientMovement[]
   mixingRecords       MixingRecord[]
+  ovkMovements        OvkMovement[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -275,6 +290,7 @@ model Farmhouse {
   placements        Placement[]
   dailyRecords      DailyRecord[]
   mixingRecords     MixingRecord[]
+  ovkMovements      OvkMovement[]
 }
 
 /// Effective-dated farmhouse→warehouse mapping (SRS §7 "Mapping Log"). Append-only:
@@ -727,4 +743,82 @@ model MixingLine {
   ingredient   Ingredient   @relation(fields: [ingredientId], references: [id])
 
   @@index([mixingRecordId])
+}
+
+// ---------------------------------------------------------------------------
+// OVK — Obat / Vitamin / Chemical inventory (Slice 11)
+// ---------------------------------------------------------------------------
+
+/// An OVK item in the central office store (SRS FR-91). Superadmin-managed. `baseUnit`
+/// is the stock unit; optional per-item `unitConversions` let entries use another unit
+/// (botol, pcs, box…). Stock moves via ovkLedger.ts only (rule 5.4 mirror).
+model OvkItem {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  category  OvkCategory
+  baseUnit  String // e.g. liter, gram, botol, box
+  status    RecordStatus @default(ACTIVE)
+  sortOrder Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  stock           OvkStock?
+  unitConversions OvkUnitConversion[]
+  movements       OvkMovement[]
+}
+
+/// A per-item unit conversion: `1 unitName = factorToBase × baseUnit` (e.g. 1 botol =
+/// 1 liter; 1 pcs = 100 gram). The base unit itself needs no row (factor 1).
+model OvkUnitConversion {
+  id           String  @id @default(cuid())
+  ovkItemId    String
+  unitName     String
+  factorToBase Decimal @db.Decimal(14, 4)
+
+  ovkItem OvkItem @relation(fields: [ovkItemId], references: [id], onDelete: Cascade)
+
+  @@unique([ovkItemId, unitName])
+}
+
+/// Balance cache: current office quantity (base unit) per OVK item. DERIVED from the
+/// OvkMovement ledger and written ONLY by src/lib/server/ovkLedger.ts (rule 5.4 mirror).
+model OvkStock {
+  id              String   @id @default(cuid())
+  ovkItemId       String   @unique
+  currentQuantity Decimal  @default(0) @db.Decimal(14, 3) // base unit; never negative
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ovkItem OvkItem @relation(fields: [ovkItemId], references: [id])
+}
+
+/// Append-only ledger of every office OVK-stock change (mirror of the ingredient ledger).
+/// A DELIVERY is IN; a TRANSFER (office → kandang) is OUT and carries the kandang + an
+/// optional note; a CORRECTION carries pre/post + a reason. `quantity` is the base-unit
+/// magnitude; `enteredQuantity`/`unitUsed` record what was physically entered (for the
+/// pemakaian report). NEVER updated/deleted; written ONLY by ovkLedger.ts.
+model OvkMovement {
+  id              String        @id @default(cuid())
+  ovkItemId       String
+  movementType    MovementType // IN (delivery) / OUT (transfer) / CORRECTION
+  sourceType      OvkSourceType
+  quantity        Decimal       @db.Decimal(14, 3) // base-unit magnitude (> 0)
+  enteredQuantity Decimal       @db.Decimal(14, 3) // quantity as entered (in unitUsed)
+  unitUsed        String // the unit the operator entered
+  farmhouseId     String? // set for a TRANSFER (the receiving kandang)
+  note            String? // optional transfer note
+  reason          String? // required (>= 20) for CORRECTION
+  preQuantity     Decimal       @db.Decimal(14, 3)
+  postQuantity    Decimal       @db.Decimal(14, 3)
+  date            DateTime      @default(now()) // business date of the movement
+  enteredById     String
+  createdAt       DateTime      @default(now())
+
+  ovkItem   OvkItem    @relation(fields: [ovkItemId], references: [id])
+  farmhouse Farmhouse? @relation(fields: [farmhouseId], references: [id])
+  enteredBy User       @relation(fields: [enteredById], references: [id])
+
+  @@index([ovkItemId, date])
+  @@index([farmhouseId, date])
+  @@index([enteredById])
 }
