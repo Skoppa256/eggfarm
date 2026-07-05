@@ -249,8 +249,16 @@ export async function resolveHidup(placementId: string, asOf: Date): Promise<num
 /**
  * Apply a day's MATI/AFKIR and persist the resulting HIDUP snapshot (write-once), on a
  * caller-supplied transaction so the daily record can bundle it with its own write.
- * new HIDUP = the HIDUP entering the day (latest snapshot strictly BEFORE `date`) −
- * MATI − AFKIR. Rejects going below zero or overwriting an existing snapshot.
+ *
+ * - A normal day nets off the HIDUP entering the day (latest snapshot strictly BEFORE
+ *   `date`): new HIDUP = entering − MATI − AFKIR; a fresh snapshot is appended.
+ * - The chick-in (day-0) date has no prior snapshot — the seed holds that slot at
+ *   Populasi Awal — so arrival-day deaths net off Populasi Awal directly (confirmed):
+ *   HIDUP(day-0) = Populasi Awal − MATI₀ − AFKIR₀, written by UPDATING the seed. This
+ *   composes with correctPopulasiAwal, which re-bases every snapshot (seed included) by
+ *   the delta, preserving each day's recorded MATI/AFKIR.
+ *
+ * Rejects going below zero or overwriting an already-recorded snapshot (write-once).
  */
 export async function applyDailyMortalityTx(
   tx: Tx,
@@ -269,21 +277,39 @@ export async function applyDailyMortalityTx(
     orderBy: { date: "desc" },
     select: { hidup: true },
   });
+  const onDate = await tx.hidupSnapshot.findUnique({
+    where: { placementId_date: { placementId, date: on } },
+  });
+
   if (!entering) {
-    throw new ConflictError("No prior HIDUP — the placement has no chick-in before this date.");
+    // Day-0: `on` is the chick-in date. Net arrival-day deaths off Populasi Awal by
+    // updating the seed snapshot (write-once — only a still-fresh seed may be recorded).
+    if (!onDate) {
+      throw new ConflictError("No prior HIDUP — the placement has no chick-in before this date.");
+    }
+    const placement = await tx.placement.findUniqueOrThrow({
+      where: { id: placementId },
+      select: { populasiAwal: true },
+    });
+    const fresh = onDate.mati === 0 && onDate.afkir === 0 && onDate.hidup === placement.populasiAwal;
+    if (!fresh) {
+      throw new ConflictError("Day-0 mortality for this placement has already been recorded (write-once).");
+    }
+    const hidup = placement.populasiAwal - mati - afkir;
+    if (hidup < 0) {
+      throw new ConflictError("MATI + AFKIR exceed the live-hen count.");
+    }
+    return tx.hidupSnapshot.update({ where: { id: onDate.id }, data: { mati, afkir, hidup } });
+  }
+
+  // Normal day: append a fresh snapshot from the entering HIDUP.
+  if (onDate) {
+    throw new ConflictError("A HIDUP snapshot for this placement-day already exists (write-once).");
   }
   const hidup = entering.hidup - mati - afkir;
   if (hidup < 0) {
     throw new ConflictError("MATI + AFKIR exceed the live-hen count.");
   }
-
-  const existing = await tx.hidupSnapshot.findUnique({
-    where: { placementId_date: { placementId, date: on } },
-  });
-  if (existing) {
-    throw new ConflictError("A HIDUP snapshot for this placement-day already exists (write-once).");
-  }
-
   return tx.hidupSnapshot.create({ data: { placementId, date: on, mati, afkir, hidup } });
 }
 

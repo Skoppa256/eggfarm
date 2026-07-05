@@ -196,3 +196,32 @@ describe("one ACTIVE placement per kandang — DB partial unique index (A23)", (
     ).rejects.toThrow();
   });
 });
+
+describe("day-0 (chick-in day) mortality (A21 resolved)", () => {
+  it("nets arrival-day deaths off Populasi Awal, is write-once, and composes with the correction", async () => {
+    const f = await setup();
+    const flock = await createFlock(
+      { strain: "A", chickInDate: D("2026-07-01"), placementAge: 100, placements: [{ farmhouseId: f.k1, populasiAwal: 1000 }] },
+      { userId: f.userId },
+    );
+    const p = (await prisma.placement.findFirstOrThrow({ where: { flockId: flock.id } })).id;
+
+    // Day-0 deaths lower HIDUP from Populasi Awal (1000 − 5 − 2 = 993), on the chick-in date.
+    await applyDailyMortality(p, D("2026-07-01"), 5, 2);
+    expect(await resolveHidup(p, D("2026-07-01"))).toBe(993);
+    // Write-once: a second day-0 recording is rejected.
+    await expect(applyDailyMortality(p, D("2026-07-01"), 1, 0)).rejects.toBeInstanceOf(ConflictError);
+
+    // Day 1 carries forward from the day-0 HIDUP.
+    await applyDailyMortality(p, D("2026-07-02"), 3, 0);
+    expect(await resolveHidup(p, D("2026-07-02"))).toBe(990);
+
+    // The Populasi Awal correction still composes: +10 re-bases every day including day-0.
+    await correctPopulasiAwal(p, 1010);
+    expect(await resolveHidup(p, D("2026-07-01"))).toBe(1003); // 1010 − 7
+    expect(await resolveHidup(p, D("2026-07-02"))).toBe(1000); // 1010 − 10
+    // MATI/AFKIR on the day-0 seed are preserved through the re-base.
+    const seed = await prisma.hidupSnapshot.findFirstOrThrow({ where: { placementId: p, date: D("2026-07-01") } });
+    expect([seed.mati, seed.afkir]).toEqual([5, 2]);
+  });
+});

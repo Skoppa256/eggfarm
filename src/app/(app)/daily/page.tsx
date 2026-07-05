@@ -240,12 +240,12 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
                 ]
           }
           defaults={defaults}
-          matiAfkirLocked={Boolean(existing) || isChickInDay}
+          matiAfkirLocked={Boolean(existing)}
           lockNote={
             existing
               ? "MATI/AFKIR are frozen once recorded (write-once HIDUP)."
               : isChickInDay
-                ? "Chick-in day: mortality starts the next day (MATI/AFKIR must be 0)."
+                ? "Chick-in day: arrival-day MATI/AFKIR net off Populasi Awal."
                 : undefined
           }
         />

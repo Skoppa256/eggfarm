@@ -137,14 +137,22 @@ describe("daily record — one per kandang/day, chick-in-day & edit rules", () =
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it("does not allow day-0 (chick-in day) mortality (A21), but a 0/0 record is fine", async () => {
+  it("records day-0 (chick-in day) mortality — nets off Populasi Awal", async () => {
     const s = await setup();
-    await expect(
-      createDailyRecord({ farmhouseId: s.farmhouseId, date: CHICK_IN }, input({ mati: 3 }), { userId: s.userId }),
-    ).rejects.toBeInstanceOf(ConflictError);
-
-    const rec = await createDailyRecord({ farmhouseId: s.farmhouseId, date: CHICK_IN }, input(), { userId: s.userId });
-    expect(rec.hidup).toBe(1000); // the seed
+    const rec = await createDailyRecord(
+      { farmhouseId: s.farmhouseId, date: CHICK_IN },
+      input({ mati: 5, afkir: 2 }), // 1000 − 7
+      { userId: s.userId },
+    );
+    expect(rec.hidup).toBe(993);
+    expect(await resolveHidup(s.placementId, CHICK_IN)).toBe(993);
+    // Day 1 then carries forward from the day-0 HIDUP.
+    const day1 = await createDailyRecord(
+      { farmhouseId: s.farmhouseId, date: D("2026-07-02") },
+      input({ mati: 3, afkir: 0 }),
+      { userId: s.userId },
+    );
+    expect(day1.hidup).toBe(990);
   });
 
   it("freezes MATI/AFKIR on edit but lets the other fields change", async () => {

@@ -203,7 +203,7 @@ export function findDailyRecord(farmhouseId: string, date: Date) {
  * Create the day's record. Resolves the active placement, applies MATI/AFKIR to the
  * HIDUP ledger (write-once via the flock helper), freezes HIDUP and HD%, and stores the
  * Admin inputs — all atomically. Duplicate (kandang/date) → edit instead. Day-0
- * (chick-in-day) mortality is not supported (A21): the seed occupies that slot.
+ * (chick-in-day) mortality nets off Populasi Awal (handled by applyDailyMortalityTx).
  */
 export async function createDailyRecord(key: DailyKey, input: DailyInput, ctx: Ctx) {
   const date = toBusinessDate(key.date);
@@ -222,24 +222,11 @@ export async function createDailyRecord(key: DailyKey, input: DailyInput, ctx: C
       throw new ConflictError("No placement occupies this kandang on that date — chick-in a flock first.");
     }
 
-    // Resolve the day's running HIDUP.
-    let hidup: number;
-    if (date.getTime() === toBusinessDate(placement.startDate).getTime()) {
-      // Chick-in day: the seed snapshot holds the slot; no mortality here (A21).
-      if (input.mati !== 0 || input.afkir !== 0) {
-        throw new ConflictError(
-          "Mortality can't be recorded on the chick-in day — the first MATI/AFKIR is the day after.",
-        );
-      }
-      const seed = await tx.hidupSnapshot.findUnique({
-        where: { placementId_date: { placementId: placement.id, date } },
-      });
-      if (!seed) throw new ConflictError("This placement has no chick-in HIDUP seed.");
-      hidup = seed.hidup;
-    } else {
-      const snap = await applyDailyMortalityTx(tx, placement.id, date, input.mati, input.afkir);
-      hidup = snap.hidup;
-    }
+    // MATI/AFKIR drive the day's running HIDUP through the write-once snapshot ledger.
+    // The chick-in day nets arrival-day deaths off Populasi Awal; later days off the
+    // previous HIDUP — both handled by applyDailyMortalityTx.
+    const snap = await applyDailyMortalityTx(tx, placement.id, date, input.mati, input.afkir);
+    const hidup = snap.hidup;
 
     // Egg buckets (live) → HD% (frozen), both Type-agnostic.
     const totals = await collectionTotals(tx, key.farmhouseId, date);
