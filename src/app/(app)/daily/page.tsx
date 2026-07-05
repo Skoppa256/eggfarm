@@ -19,6 +19,7 @@ import {
 } from "@/lib/server/dailyRecords";
 import { resolveHidup } from "@/lib/server/flocks";
 import { findMixing } from "@/lib/server/mixing";
+import { vaksinForDailyRecord } from "@/lib/server/vaksin";
 
 import { DailyForm, type DailyFormDefaults } from "./daily-form";
 
@@ -122,12 +123,13 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
     );
   }
 
-  const [existing, buckets, reusableLeftoverIn, hidupAsOf, mix] = await Promise.all([
+  const [existing, buckets, reusableLeftoverIn, hidupAsOf, mix, vaksinLogs] = await Promise.all([
     findDailyRecord(farmhouseId, date),
     liveEggBuckets(farmhouseId, date),
     previousReusableLeftover(placement.id, date),
     resolveHidup(placement.id, date),
     findMixing(farmhouseId, date),
+    vaksinForDailyRecord(farmhouseId, date),
   ]);
 
   const hari = computeHari(placement.flock.placementAge, placement.flock.chickInDate, date);
@@ -173,6 +175,26 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
         <Stat label="HARI" value={hari} />
         <Stat label="MINGGU" value={minggu} />
         <Stat label={existing ? "HIDUP (recorded)" : "HIDUP (entering)"} value={hidup} />
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-semibold text-zinc-500">VAKSIN (from the log)</h2>
+        <div className="rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+          {vaksinLogs.length === 0 ? (
+            <span className="text-zinc-500">— no vaccinations logged for this kandang/date</span>
+          ) : (
+            <ul className="flex flex-wrap gap-x-6 gap-y-1">
+              {vaksinLogs.map((v) => (
+                <li key={v.id} className="font-medium">
+                  {v.vaksinType.name}{" "}
+                  <span className="font-normal text-zinc-500">
+                    · {v.vials} vial{v.vials > 1 ? "s" : ""} · {v.vaccinator}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div>

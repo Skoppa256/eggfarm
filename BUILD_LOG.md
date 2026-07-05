@@ -4,17 +4,17 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 11)
+## CURRENT STATUS (updated after Slice 12)
 
-- **Slices complete & committed:** Slices 1–10, **three confirmed-fact fixes** (MINGGU =
-  ceil, day-0 mortality, ingredient correction — each its own commit), and **Slice 11
-  (OVK — Obat/Vitamin/Chemical inventory)**.
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **133/133 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 12 (VAKSIN logging) — activity log only, no inventory; the daily VAKSIN
-  field derives from it (SRS §3.13).
-- **No open STOP-and-ask items.** The two Slice 9 refinements are now RESOLVED by confirmed
-  farm facts: **A19** MINGGU = ceil(age/7) (day-120 = week 18); **A21** day-0 mortality is
-  recordable (nets off Populasi Awal). **A31** closed: supervised ingredient correction built.
+- **Slices complete & committed:** Slices 1–10, the three confirmed-fact fixes, Slice 11
+  (OVK), and **Slice 12 (VAKSIN logging — activity log, no inventory)**.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **140/140 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 13 (Dashboard, reports, exports) — the last v2 slice: KPI cards,
+  production/grade/flock-health charts, standard reports (role-scoped), Excel/CSV export.
+- **No open STOP-and-ask items.** All Slice-9 refinements resolved by confirmed facts
+  (A19 MINGGU = ceil; A21 day-0 mortality; A31 ingredient correction).
+- **All operational modules now built:** egg pipeline (collection → grading → warehouse →
+  sales), flock + daily recording, PAKAN, OVK, VAKSIN. Only the dashboard/reports remain.
 - **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
   (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
@@ -32,7 +32,8 @@ Running log of what was built, slice by slice. Newest summary on top.
 7. `slice6_low_stock_thresholds` · 8. `slice7_buyers_sales` · 9. `slice8_flock_placement` ·
 10. `slice9_placement_active_unique` (raw-SQL partial index) · 11. `slice9_daily_record` ·
 12. `slice10_pakan` (ingredient master + stock ledger + mixing tables + DailyRecord feed columns) ·
-13. `slice11_ovk` (OVK item master + unit conversions + office stock ledger).
+13. `slice11_ovk` (OVK item master + unit conversions + office stock ledger) ·
+14. `slice12_vaksin` (vaksin-type master + vaksin log; no inventory).
 
 **Note on the partial index (#10):** `Placement_farmhouseId_active_key` is a partial
 UNIQUE index (`WHERE status = 'ACTIVE'`) that Prisma can't express in `schema.prisma`, so
@@ -243,6 +244,45 @@ Each its own commit; all gates green.
   chick-in-day MATI/AFKIR.
 - **`feat: supervised ingredient stock correction` (A31 closed).** `recordIngredientCorrection`
   via `ingredientLedger.ts` — immutable CORRECTION with pre/post + reason ≥ 20; Admin/Superadmin.
+
+---
+
+## Slice 12 — VAKSIN logging ✅
+
+**Goal (BUILD_PLAN / SRS §3.13, CLAUDE.md §6):** a vaccination activity log with NO
+inventory; a Superadmin vaksin-type master; the daily record's VAKSIN field derived from
+the log. Deliberately simpler than OVK — the stock-ledger pattern is intentionally NOT
+mirrored (no stock, deliveries, or draw-downs).
+
+### What was built
+- **Schema** → migration #14: `VaksinType` master (name, status — soft-delete) + `VaksinLog`
+  (business date, vaksin type, vials, kandang, vaccinator, `enteredById`). No stock tables.
+  Multiple events per kandang/day are allowed (no unique constraint).
+- **`vaksinTypes.ts`** master CRUD (Superadmin; mirrors `gradeTypes.ts`). **`vaksin.ts`:**
+  `createVaksinLog` (rejects a deactivated type — excluded from new logs, history retained;
+  validates vials ≥ 1 + a vaccinator), `listVaksinLogs` (filter by date range / kandang /
+  type / vaccinator, case-insensitive, FR-102), and **`vaksinForDailyRecord`** — the daily
+  VAKSIN field derived LIVE from the log (FR-101), a single source of truth.
+- **Derived, not stored (FR-101):** the DailyRecord has NO vaksin column; `/daily` reads
+  `vaksinForDailyRecord(kandang, date)` and renders the VAKSIN field live. Not write-once —
+  the log is the source, so it always reflects the current log.
+- **Zod + actions** (master = Superadmin; log entry = Admin/Superadmin; Owner rejected, rule
+  5.5). **UI:** `/vaksin` (log a vaccination, filterable log list, vaksin-type master with
+  Superadmin create/deactivate); nav link; the `/daily` page shows the derived VAKSIN field.
+
+### Key decisions
+- **No inventory, by design** (SRS §3.13 / the slice brief) — a pure activity log; VAKSIN is
+  the one operational module with no stock path.
+- **Daily VAKSIN is a live derivation**, consistent with how the daily record already treats
+  OBAT/VITAMIN as decoupled notes — but VAKSIN is stronger: it reads from the vaksin log
+  rather than being typed at all.
+
+### Test status
+`pnpm test` → **140 passed** (33 files): +7 (a logged vaccination surfaces on the matching
+kandang/date daily record and only there; deactivated type excluded from new logs with
+history intact; filters by kandang/type/vaccinator/date range; vials<1 + empty vaccinator
+rejected; master Superadmin-only; log Owner-rejected/Admin-allowed). `tsc`, `eslint`,
+`next build` all clean.
 
 ---
 

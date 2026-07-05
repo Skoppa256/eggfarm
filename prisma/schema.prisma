@@ -251,6 +251,7 @@ model User {
   ingredientMovements IngredientMovement[]
   mixingRecords       MixingRecord[]
   ovkMovements        OvkMovement[]
+  vaksinLogs          VaksinLog[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -291,6 +292,7 @@ model Farmhouse {
   dailyRecords      DailyRecord[]
   mixingRecords     MixingRecord[]
   ovkMovements      OvkMovement[]
+  vaksinLogs        VaksinLog[]
 }
 
 /// Effective-dated farmhouse→warehouse mapping (SRS §7 "Mapping Log"). Append-only:
@@ -821,4 +823,44 @@ model OvkMovement {
   @@index([ovkItemId, date])
   @@index([farmhouseId, date])
   @@index([enteredById])
+}
+
+// ---------------------------------------------------------------------------
+// VAKSIN — vaccination activity log (Slice 12). NO inventory (SRS §3.13).
+// ---------------------------------------------------------------------------
+
+/// A vaccine type in the master list (SRS FR-99). Superadmin-managed, soft-deleted:
+/// a deactivated type is excluded from new logs but retained in history.
+model VaksinType {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  status    RecordStatus @default(ACTIVE)
+  sortOrder Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  logs VaksinLog[]
+}
+
+/// One vaccination event (SRS FR-100). Pure activity log — no stock. The daily record's
+/// VAKSIN field derives live from these rows for a kandang/date (FR-101), so nothing is
+/// stored on the DailyRecord. Multiple events per kandang/day are allowed.
+model VaksinLog {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date // business date (WITA)
+  vaksinTypeId String
+  farmhouseId  String
+  vials        Int // number of vials administered
+  vaccinator   String // who administered
+  enteredById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vaksinType VaksinType @relation(fields: [vaksinTypeId], references: [id])
+  farmhouse  Farmhouse  @relation(fields: [farmhouseId], references: [id])
+  enteredBy  User       @relation(fields: [enteredById], references: [id])
+
+  @@index([farmhouseId, date])
+  @@index([vaksinTypeId])
+  @@index([date])
 }
