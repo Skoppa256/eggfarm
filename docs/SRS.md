@@ -424,6 +424,8 @@ Each batch is graded centrally and sequentially. Grading captures both Size & He
 </tbody>
 </table>
 
+> **v2.0.1 (as-built) — same-WITA-day grading, collection lock & Superadmin override.** A grading record is tied to its collection's production business day (same kandang/date/batch). Once a batch's grading is SUBMITTED its collection counts are **LOCKED** (a plain edit is rejected); a **Superadmin may override** to correct the collection, but the edit is refused if it would strand the graded total over the new available, and the compensating Angkat Rak movements carry an audit reason. The override never re-dates grading or splits a batch's stock across dates — attribution stays on the production day. Grading is **edit-after-submit** (re-submit reconciles stock by delta). (Assumptions A11, A12 → A27.)
+
 ## 3.4 Module 4 — Warehouse Management
 
 Graded eggs and Angkat Rak are routed to the assigned warehouse per the farmhouse-to-warehouse mapping. Stock is tracked per Egg SKU in pcs and displayed in rak + pcs.
@@ -861,6 +863,8 @@ A flock is one chick-in delivery (one strain, one chick-in date, one placement a
 </tbody>
 </table>
 
+> **v2.0.1 (as-built) — flock derivations & lifecycle.** Business day = **Asia/Makassar (WITA, UTC+8, no DST)** throughout (`src/lib/dates.ts`). **MINGGU = ceil(HARI / 7)** (confirmed farm fact: day-120 = week 18, day-119 = week 17) — refines the "MINGGU = HARI / 7" above. **HIDUP** is persisted write-once as a `HidupSnapshot` per placement-day (never recomputed); **day-0 (chick-in-day) mortality is recordable** and nets off Populasi Awal. One active placement per kandang is enforced in-service *and* by a raw-SQL partial unique index. A Superadmin-only **Populasi Awal correction** re-bases the whole HIDUP history by the delta (the one edit for a chick-in typo); flock header/placements are otherwise fixed. (Assumptions A6, A19, A21, A22, A23, A28.)
+
 ## 3.10 Module 10 — Daily Farmhouse Recording
 
 One record per kandang per day for the active placement. Admin enters a small set of yellow fields; the system derives the rest from the flock layer, the collection/grading flow, the mixing event, and the vaksin log. The egg buckets derive from collection for a live same-day figure and reconcile to grading once grading is complete.
@@ -990,6 +994,8 @@ One record per kandang per day for the active placement. Admin enters a small se
 </tbody>
 </table>
 
+> **v2.0.1 (as-built) — write-once vs live-derived.** Frozen at record creation (§5.3): HIDUP, HD%, MATI/AFKIR, and — once the day's mix exists — the PAKAN block (MASUK/TERSEDIA/REALISASI INTAKE/GRAM-EKOR/FCR/JENIS). Live-derived on read, not stored: the four egg buckets, and the **VAKSIN field** (FR-101, read from the vaksin log). PAKAN MASUK posts write-once from the mixing event (first-write-wins: at record creation if the mix exists, else at mix confirmation). (Assumptions A24, A26, A37.)
+
 ## 3.11 Module 11 — PAKAN (Feed) Management & Mixing
 
 PAKAN covers a single central raw-ingredient store, per-kandang daily mixing recipes, a printable ingredient pull-list for the feed warehouse, and automatic posting of the mixed amount into the daily record. A mixing event is performed the evening before but is dated to the consumption day, so recipe, daily record, and ingredient drawdown all share one date.
@@ -1111,6 +1117,8 @@ PAKAN covers a single central raw-ingredient store, per-kandang daily mixing rec
 </tbody>
 </table>
 
+> **v2.0.1 (as-built) — feed stock ledger & mixing.** Central ingredient stock moves through **`ingredientLedger.ts` only** (append-only `IngredientMovement` + `IngredientStock` balance; kg Decimal; FOR-UPDATE-locked; reject-negative) — the feed mirror of the egg ledger, including a supervised **CORRECTION** (pre/post + reason ≥ 20). Mixing is **confirm-once** per kandang/day; a **no-mix day** (leftover ≥ requirement → TOTAL CAMPUR 0) draws nothing; main-feed % must sum to 100% (±0.01); the requirement uses the latest HIDUP snapshot ≤ the consumption day. Feed entries are kg — the per-item unit-conversion mechanism exists (OVK) but isn't wired to feed yet. (Assumptions A31, A32, A33, A34, A35, A36.)
+
 ## 3.12 Module 12 — OVK (Obat / Vitamin / Chemical) Inventory
 
 OVK is a single inventory of three categories — Obat, Vitamin, Chemical — held in one central office store. Stock increases on delivery to the office and decreases when items are transferred out to a kandang (the transfer is the stock-reduction moment, not the later administration to hens). The usage report mirrors the farm's 'Catatan Pemakaian Obat' sheet.
@@ -1199,6 +1207,8 @@ OVK is a single inventory of three categories — Obat, Vitamin, Chemical — he
 </tr>
 </tbody>
 </table>
+
+> **v2.0.1 (as-built) — one office-stock ledger.** OVK office stock moves through **`ovkLedger.ts` only**: delivery IN, office→kandang transfer OUT, and a supervised **CORRECTION** are one append-only `OvkMovement` ledger + `OvkStock` balance (base-unit Decimal; reject-negative) — realizing the SRS's separate OVK Delivery / Transfer as movements. Per-item **unit conversions** (`OvkUnitConversion`, e.g. botol↔liter, pcs↔gram); the pemakaian report shows the entered quantity + unit. (Assumptions A38, A39, A40.)
 
 ## 3.13 Module 13 — VAKSIN Logging
 
@@ -1480,6 +1490,22 @@ Entities new or materially changed in v2.0 are marked. **Egg quantities are stor
 | **Vaksin Type** **(NEW)**            | ID, Name, Status. Managed by Superadmin.                                                                                                                                                                                                                                               |
 | **Vaksin Log** **(NEW)**             | ID, Date, Vaksin Type ID, Vials, Kandang ID, Vaccinator, Entered By, Timestamp                                                                                                                                                                                                         |
 | **User**                             | ID, Name, Username, Role (Superadmin/Owner/Admin), Status, Last Login                                                                                                                                                                                                                  |
+
+### 7.1.1 As-built additions & refinements — v2.0.1
+
+*(Added during the Slice 1–12 build; see `BUILD_LOG.md` and `prisma/schema.prisma`. These annotate — they do not replace — the §7.1 conceptual list. Entities already in §7.1 that were built as specified are not repeated here; a few were realized differently, noted below.)*
+
+| **Entity (as-built)**                     | **Key Attributes / Note**                                                                                                                                                                                                                                        |
+|-------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **HIDUP Snapshot** **(NEW)**              | ID, Placement ID, Date (business), MATI, AFKIR, HIDUP. One **write-once** row per (placement, business date), seeded at chick-in from Populasi Awal — the running-HIDUP ledger behind the daily record's HIDUP; resolved latest-≤-date, never recomputed.        |
+| **Feed Ingredient Movement** **(NEW)**    | ID, Ingredient ID, Movement Type (In/Out/**Correction**), Quantity (kg), Source Type (Delivery/Mixing/Correction), Source Ref ID, Reason, Pre-Quantity, Post-Quantity, Date, Entered By. **Append-only ledger** — a "Feed Delivery" is a Delivery movement here, not a separate table. |
+| **OVK Movement** **(NEW)**                | ID, Item ID, Movement Type (In/Out/**Correction**), Source Type (Delivery/Transfer/Correction), Quantity (base unit), Entered Quantity + Unit Used, Kandang ID (transfers), Note, Reason, Pre/Post-Quantity, Date, Entered By. **Append-only ledger** — realizes OVK Delivery + Transfer + Correction as one table. |
+| **OVK Unit Conversion** **(NEW)**         | ID, Item ID, Unit Name, Factor To Base. `1 Unit Name = Factor × base unit` (e.g. 1 botol = 1 liter; 1 pcs = 100 gram). The reusable per-item conversion mechanism (also intended for feed karung→kg).                                                            |
+| **Farmhouse Batch Setting Log** **(NEW)** | ID, Kandang ID, Max Batches Per Day, Effective From Date, Changed By. **Effective-dated** (value in force on date D = greatest `Effective From ≤ D`); a change is future-dated to D+1 (FR-41). Mirrors the Mapping Log.                                            |
+| **Low-Stock Threshold** **(NEW)**         | ID, Warehouse ID, Size & Health Grade, Type Grade ID, Min Quantity (pcs). Its **own table** (not a column on Warehouse), so a threshold write never touches the ledger-owned balance cache.                                                                      |
+| **Session** **(NEW)**                     | ID, User ID, Expires At, Created At. DB-backed auth session; the signed httpOnly cookie carries only the session id, so deactivation/logout take effect on the next request.                                                                                     |
+| **Daily Farmhouse Record** *(refined)*    | As-built also stores frozen HD%, REALISASI INTAKE (kg), GRAM/EKOR, daily FCR, JENIS, and reusable-leftover-in; and has **no stored VAKSIN field** — VAKSIN is derived live from the Vaksin Log (FR-101).                                                          |
+| **Stock / Ingredient / OVK Movement** *(correction)* | All three movement ledgers support an immutable **CORRECTION** (pre/post + mandatory reason ≥ 20 chars); to fix a wrong correction, append a second one — never edit.                                                                             |
 
 ## 7.2 Data Retention
 

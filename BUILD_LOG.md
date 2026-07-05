@@ -15,6 +15,15 @@ Running log of what was built, slice by slice. Newest summary on top.
   (A19 MINGGU = ceil; A21 day-0 mortality; A31 ingredient correction).
 - **All operational modules now built:** egg pipeline (collection → grading → warehouse →
   sales), flock + daily recording, PAKAN, OVK, VAKSIN. Only the dashboard/reports remain.
+- **Docs synced to as-built (docs-only pass, `docs:` commit — no code/schema/test changes).**
+  `CLAUDE.md`: §5.4 now describes the **three parallel single-writer ledgers** (egg/feed/OVK,
+  each with a supervised correction); §6 folds in WITA, MINGGU = ceil, day-0 mortality,
+  same-WITA-day grading + collection lock + Superadmin override, write-once vs live-derived
+  (VAKSIN), and the unit-conversion mechanism; plus a "Data model additions since v2.0" note.
+  `SRS.md`: new **§7.1.1 (as-built additions & refinements)** table and `v2.0.1 (as-built)`
+  annotations on §§3.3, 3.9, 3.10, 3.11, 3.12 (originals kept; no FRs renumbered). The
+  **As-Built Change Log (Slices 1–12)** index — per-slice behaviour + all A1–A40 resolutions —
+  is appended at the bottom of this file.
 - **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
   (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
@@ -877,3 +886,71 @@ before any other feature.
 
 ### Test status
 `pnpm test` → **9 passed** (2 files). `tsc`, `eslint`, `next build` all clean.
+
+---
+
+# As-Built Change Log (Slices 1–12)
+
+The one authoritative index: per-slice committed behaviour + every resolved assumption
+(A1–A40). The per-slice sections above have full detail; this is the quick reference the
+SRS/CLAUDE annotations point to. **Legend:** *Resolved* = settled by a confirmed fact or a
+later slice · *Closed* = the concern no longer applies · *Standing* = a documented decision,
+still in force (flag to change) · *→ Slice 13* = deferred to the dashboard/reports slice.
+
+### Per slice (committed behaviour)
+- **Slice 1 — Warehouse ledger + projection.** `StockMovement` append-only ledger + `WarehouseStock` balance; `ledger.ts` the sole stock writer (FOR-UPDATE lock, atomic movement+balance, reject-oversell); `units.ts` pcs⇄rak; seed. (A1–A4)
+- **refactor — enteredById FK to User.** Every movement attributed with referential integrity. (A2)
+- **Slice 2 — Auth, users, roles.** DB-backed sessions (jose id-only cookie), bcryptjs; `requireUser`/`requireRole`; middleware; Superadmin user CRUD; Owner read-only enforced on the Slice-1 OUT path. (A5)
+- **Slice 3 — Config & master data.** Farmhouses; **effective-dated** warehouse-mapping + batch-setting logs; measurement units + grade types (Superadmin); role-split actions; WITA date helpers. (A6, A7, A8)
+- **Slice 4 — Collection input.** `CollectionRecord` (Type-agnostic counts) + `AngkatRakLift` (per Type, posts to ledger on save); duplicate→edit; edit reconciles Angkat Rak by delta. (A9, A10)
+- **Slice 5 — Grading.** `GradingRecord` + line items; batch-sequential; draft (no stock) / submit (posts per SKU); live reconcile ≤ available; edit-after-submit reconciles by delta. (A11, A12)
+- **Slice 6 — Warehouse views, corrections, thresholds.** Rebuilt `/warehouse` (removed the Slice-1 demo); immutable **Stock Correction** (reason ≥ 20) via a generalized locked core; `LowStockThreshold` table + alerts; `TX_OPTIONS`. (A13, A14, A15)
+- **Slice 7 — Buyers + Sales & Dispatch.** Buyer CRUD; **atomic multi-line sale** (SKU-sorted lock order, all-or-nothing, names the short SKU); idempotent **void** via compensating VOID; void reason ≥ 10. (A16, A17, A18)
+- **Slice 8 — Flock & placement lifecycle.** `Flock`/`Placement`; `HidupSnapshot` write-once running HIDUP; one active placement per kandang; Superadmin chick-in/end; HARI/MINGGU pure helpers. (A19, A20, A21, A22, A23)
+- **Slice 9 — Daily recording (+3 foundation items).** `DailyRecord` (Admin inputs + frozen HIDUP/HD%); egg buckets live → reconcile-to-grading; DB partial unique index (A23); Populasi Awal correction (A28); same-day grading lock + Superadmin override (A27, closes A12). (A24–A30)
+- **Slice 10 — PAKAN (feed) & mixing.** `ingredientLedger.ts` (feed stock, sole writer); mixing (requirement/netting/JENIS/atomic draw-down); **PAKAN MASUK** posts write-once onto the daily record; printable pull-list. (A31, A32–A37)
+- **Fixes (before Slice 11).** MINGGU = ceil (A19), day-0 mortality (A21), supervised ingredient correction (A31) — each its own commit.
+- **Slice 11 — OVK.** `ovkLedger.ts` (office stock, sole writer); per-item **unit conversions**; delivery / transfer / correction; pemakaian report; daily notes decoupled. (A38, A39, A40)
+- **Slice 12 — VAKSIN.** Vaksin-type master + activity log (**no inventory**); daily VAKSIN field derived **live** from the log.
+
+### Assumption index (A1–A40)
+- **A1** — `SourceType.ADJUSTMENT` added for Slice-1 generic actions; now unused after the demo was removed (A13), kept in the enum. *Standing.*
+- **A2** — `enteredById` nullable initially → made a **required FK to User** (refactor). *Resolved.*
+- **A3** — `unitUsed` is a free String ("PCS"/"RAK"), not the MeasurementUnit table (audit-only). *Standing.*
+- **A4** — Slice-1 `(app)/layout` stub `requireUser` → real middleware/session in Slice 2. *Resolved.*
+- **A5** — bcrypt → **bcryptjs** (pure-JS, same `$2` format). *Standing.*
+- **A6** — business day = **WITA** (Asia/Makassar, UTC+8, no DST). *Resolved & confirmed.*
+- **A7** — `MAX_BATCHES_PER_DAY = 10` code constant (no global-settings table in scope). *Standing.*
+- **A8** — MeasurementUnit is a managed catalog; pcs⇄rak still lives in `units.ts` (code). *Standing.*
+- **A9** — Collection: Good/Retak/Lunak/Kosong in **pcs**; Angkat Rak in **rak** (×30). *Standing.*
+- **A10** — Editing a collection downward posts a compensating Angkat Rak OUT; rejected if already sold. *Standing.*
+- **A11** — Grading edit-after-submit: re-submit reconciles stock by delta. *Standing.*
+- **A12** — Grading reconcile is live, not snapshotted → **Closed** by the Slice-9 collection lock (A27).
+- **A13** — Removed the Slice-1 demo IN/OUT form; `ADJUSTMENT` enum retained (unused). *Standing.*
+- **A14** — Warehouse selectors include inactive warehouses (stay viewable/correctable). *Standing.*
+- **A15** — Low-stock alerts on the warehouse view; dashboard surfacing → **Slice 13.**
+- **A16** — Void reason ≥ **10** chars (revised from ≥3 per review). *Resolved.*
+- **A17** — Sales entry growable rows; duplicate SKUs allowed, validated against the aggregate. *Standing.*
+- **A18** — Per-buyer aggregate profile (FR-39) deferred → **Slice 13.**
+- **A19** — **MINGGU = ceil(age/7)** (day-120 = week 18). *Resolved (confirmed fact).*
+- **A20** — Flock header/placements fixed after chick-in, except the Populasi Awal correction (A28). *Standing.*
+- **A21** — **Day-0 (chick-in-day) mortality recordable** (nets off Populasi Awal). *Resolved (confirmed fact).*
+- **A22** — `HidupSnapshot` new model (not in original SRS §7) → documented in SRS §7.1.1. *Documented.*
+- **A23** — One active placement per kandang: in-service check **+ DB partial unique index.** *Standing.*
+- **A24** — HD% + HIDUP frozen write-once; egg buckets live-derived. *Standing.*
+- **A25** — Feed block provisional in Slice 9 → **now real** (Slice-10 MASUK). *Resolved.*
+- **A26** — MATI/AFKIR frozen once a daily record is saved; a forward-propagating correction is deferred. *Standing.*
+- **A27** — Same-WITA-day grading + collection lock + Superadmin override (keeps grading on the production day, never splits a batch). *Standing; closes A12.*
+- **A28** — Populasi Awal correction re-bases the whole HIDUP history by the delta; blocked once daily records exist. *Standing.*
+- **A29** — Buckets reconcile on ANY submitted grading (progressive sub-split firming). *Standing.*
+- **A30** — `resolvePlacementForDate` picks the newest placement covering the date (re-populate-same-day edge). *Standing.*
+- **A31** — Ingredient stock mirrors the egg ledger; supervised ingredient correction built. *Closed.*
+- **A32** — Mixing is confirm-once per kandang/day. *Standing.*
+- **A33** — No-mix day draws nothing (mains 0 + fixed supplements skipped). *Standing.*
+- **A34** — Feed unit conversions not wired (feed entries kg-only); the mechanism exists in OVK, reusable. *Standing.*
+- **A35** — Main-feed % must sum to 100% within ±0.01; fixed supplements not scaled. *Standing.*
+- **A36** — Requirement HIDUP = latest snapshot ≤ the consumption day (`hidupAtMix`). *Standing.*
+- **A37** — PAKAN MASUK freeze is first-write-wins (record creation vs mix confirmation). *Standing.*
+- **A38** — OVK supervised correction included (beyond the two FRs) for stock-path parity. *Standing.*
+- **A39** — Pemakaian report shows the **entered** quantity + unit (matches the farm's Catatan Pemakaian). *Standing.*
+- **A40** — OVK transfer is the only stock-out; daily OBAT/VITAMIN notes never move stock. *Standing.*
