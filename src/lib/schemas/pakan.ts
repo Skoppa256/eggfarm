@@ -23,6 +23,12 @@ export const deliverySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date."),
 });
 
+export const ingredientCorrectionSchema = z.object({
+  ingredientId: z.string().min(1, "Choose an ingredient."),
+  newQuantity: z.coerce.number().min(0, "Corrected quantity cannot be negative."),
+  reason: z.string().trim().min(20, "A correction needs a reason of at least 20 characters."),
+});
+
 export const mixingKeySchema = z.object({
   farmhouseId: z.string().min(1, "Choose a kandang."),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date."),

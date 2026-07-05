@@ -20,10 +20,14 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 import { IngredientCategory, Role } from "@/generated/prisma/enums";
 import { ForbiddenError } from "@/lib/errors";
-import { createIngredientAction, deliverIngredientAction } from "@/app/(app)/ingredients/actions";
+import {
+  correctIngredientAction,
+  createIngredientAction,
+  deliverIngredientAction,
+} from "@/app/(app)/ingredients/actions";
 import { createSession } from "@/lib/server/auth";
 import { prisma } from "@/lib/server/db";
-import { getIngredientStock } from "@/lib/server/ingredientLedger";
+import { getIngredientStock, recordDelivery } from "@/lib/server/ingredientLedger";
 import { hashPassword } from "@/lib/server/password";
 
 import { resetDb } from "./helpers";
@@ -34,8 +38,11 @@ beforeEach(async () => {
 });
 
 async function loginAs(role: Role) {
-  const user = await prisma.user.create({
-    data: { name: role, username: role.toLowerCase(), passwordHash: await hashPassword("pw12345678"), role },
+  // Idempotent so a test can switch roles back and forth (e.g. Owner → Admin).
+  const user = await prisma.user.upsert({
+    where: { username: role.toLowerCase() },
+    update: {},
+    create: { name: role, username: role.toLowerCase(), passwordHash: await hashPassword("pw12345678"), role },
   });
   await createSession(user.id);
   return user;
@@ -84,5 +91,30 @@ describe("ingredient master + delivery actions (rule 5.5)", () => {
     expect(result.ok).toBe(true);
     const stock = (await getIngredientStock()).find((s) => s.ingredientId === ing.id);
     expect(stock?.currentQuantity.toNumber()).toBe(800.5);
+  });
+
+  it("rejects OWNER on a stock correction; lets an ADMIN correct with a reason", async () => {
+    const ing = await prisma.ingredient.create({
+      data: { name: "Dedak", category: IngredientCategory.BRAN },
+    });
+    const admin = await loginAs(Role.ADMIN);
+    await recordDelivery({ ingredientId: ing.id, quantity: 100, enteredById: admin.id });
+
+    await loginAs(Role.OWNER);
+    await expect(
+      correctIngredientAction(
+        null,
+        form({ ingredientId: ing.id, newQuantity: "90", reason: "Physical stock-take correction now" }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+
+    await loginAs(Role.ADMIN);
+    const result = await correctIngredientAction(
+      null,
+      form({ ingredientId: ing.id, newQuantity: "90", reason: "Physical stock-take correction now" }),
+    );
+    expect(result.ok).toBe(true);
+    const stock = (await getIngredientStock()).find((s) => s.ingredientId === ing.id);
+    expect(stock?.currentQuantity.toNumber()).toBe(90);
   });
 });

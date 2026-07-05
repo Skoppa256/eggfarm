@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { Prisma } from "@/generated/prisma/client";
 import { IngredientSourceType, MovementType } from "@/generated/prisma/enums";
-import { InsufficientIngredientError } from "@/lib/errors";
+import { ConflictError, InsufficientIngredientError } from "@/lib/errors";
 import { prisma, TX_OPTIONS } from "@/lib/server/db";
 
 // THE INGREDIENT LEDGER — the ONLY writer of central feed-ingredient stock (CLAUDE.md
@@ -143,6 +143,76 @@ export function recordDelivery(input: SourcedInput) {
  */
 export function drawIngredientTx(tx: Tx, input: SourcedInput) {
   return postIngredientTx(tx, { ...input, sourceType: IngredientSourceType.MIXING }, "OUT");
+}
+
+/** Minimum reason length for a supervised ingredient Stock Correction (mirrors egg §5.1). */
+export const INGREDIENT_CORRECTION_MIN_REASON = 20;
+
+export interface IngredientCorrectionInput {
+  ingredientId: string;
+  /** Exactly one of: the absolute corrected balance (kg) OR a signed delta (kg). */
+  newQuantity?: number;
+  delta?: number;
+  reason: string; // >= INGREDIENT_CORRECTION_MIN_REASON chars
+  enteredById: string;
+  date?: Date;
+}
+
+/**
+ * Supervised ingredient Stock Correction — the feed mirror of the egg `recordCorrection`
+ * (closes A31). Writes an IMMUTABLE CORRECTION `IngredientMovement` carrying pre/post and
+ * updates the balance, atomically and row-locked, via `ingredientLedger.ts` only (rule
+ * 5.4). No edit/delete — to fix a wrong correction, submit a SECOND correction. Rejects a
+ * reason shorter than 20 chars, and a result below zero or equal to the current balance.
+ */
+export async function recordIngredientCorrection(input: IngredientCorrectionInput) {
+  const reason = input.reason.trim();
+  if (reason.length < INGREDIENT_CORRECTION_MIN_REASON) {
+    throw new ConflictError(
+      `A correction needs a reason of at least ${INGREDIENT_CORRECTION_MIN_REASON} characters.`,
+    );
+  }
+  const hasAbsolute = input.newQuantity != null;
+  const hasDelta = input.delta != null;
+  if (hasAbsolute === hasDelta) {
+    throw new ConflictError("Provide either a corrected quantity or a delta, not both.");
+  }
+  if (hasAbsolute && (!Number.isFinite(input.newQuantity) || (input.newQuantity as number) < 0)) {
+    throw new ConflictError("Corrected quantity must be a non-negative number (kg).");
+  }
+  if (hasDelta && !Number.isFinite(input.delta)) {
+    throw new ConflictError("Delta must be a number (kg).");
+  }
+
+  return prisma.$transaction(
+    (tx) =>
+      applyIngredientMovementTx(
+        tx,
+        input.ingredientId,
+        async (pre) => {
+          const post = hasAbsolute
+            ? toDecimal(input.newQuantity as number)
+            : pre.plus(toDecimal(input.delta as number));
+          if (post.isNegative()) {
+            throw new ConflictError(
+              `Correction would drive ${await ingredientLabel(tx, input.ingredientId)} below zero.`,
+            );
+          }
+          if (post.equals(pre)) {
+            throw new ConflictError("Correction must change the balance.");
+          }
+          return post;
+        },
+        {
+          movementType: MovementType.CORRECTION,
+          sourceType: IngredientSourceType.CORRECTION,
+          reason,
+          enteredById: input.enteredById,
+          date: input.date,
+        },
+      ),
+    TX_OPTIONS,
+  );
 }
 
 /** Current central balances (one row per ingredient touched), with the ingredient. */

@@ -5,10 +5,15 @@ import { revalidatePath } from "next/cache";
 import { RecordStatus } from "@/generated/prisma/enums";
 import type { ActionResult } from "@/lib/action-result";
 import { AppError } from "@/lib/errors";
-import { deliverySchema, ingredientSchema, ingredientStatusSchema } from "@/lib/schemas/pakan";
+import {
+  deliverySchema,
+  ingredientCorrectionSchema,
+  ingredientSchema,
+  ingredientStatusSchema,
+} from "@/lib/schemas/pakan";
 import { requireRole } from "@/lib/server/auth";
 import { createIngredient, setIngredientStatus } from "@/lib/server/ingredients";
-import { recordDelivery } from "@/lib/server/ingredientLedger";
+import { recordDelivery, recordIngredientCorrection } from "@/lib/server/ingredientLedger";
 
 const PATH = "/ingredients";
 const OPERATORS = ["ADMIN", "SUPERADMIN"] as const;
@@ -77,6 +82,36 @@ export async function deliverIngredientAction(
     });
     revalidatePath(PATH);
     return { ok: true, message: "Delivery recorded — ingredient stock increased." };
+  } catch (err) {
+    if (err instanceof AppError) return { ok: false, error: err.message };
+    throw err;
+  }
+}
+
+export async function correctIngredientAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  // Rule 5.5: a supervised ingredient correction is Admin/Superadmin; Owner rejected.
+  const user = await requireRole(...OPERATORS);
+
+  const parsed = ingredientCorrectionSchema.safeParse({
+    ingredientId: formData.get("ingredientId"),
+    newQuantity: formData.get("newQuantity"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  try {
+    await recordIngredientCorrection({
+      ingredientId: parsed.data.ingredientId,
+      newQuantity: parsed.data.newQuantity,
+      reason: parsed.data.reason,
+      enteredById: user.id,
+    });
+    revalidatePath(PATH);
+    return { ok: true, message: "Ingredient stock corrected." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

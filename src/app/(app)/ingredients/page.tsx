@@ -7,6 +7,7 @@ import { getIngredientLedger, getIngredientStock } from "@/lib/server/ingredient
 import { listActiveIngredients, listIngredients } from "@/lib/server/ingredients";
 
 import { setIngredientStatusAction } from "./actions";
+import { CorrectionForm } from "./correction-form";
 import { DeliveryForm } from "./delivery-form";
 import { IngredientForm } from "./ingredient-form";
 
@@ -49,6 +50,19 @@ export default async function IngredientsPage() {
           )}
         </div>
       </section>
+
+      {active.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Correct stock</h2>
+          <div className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
+            <p className="mb-3 text-xs text-zinc-500">
+              A supervised, immutable correction (a compensating movement with pre/post and a
+              reason). To fix a wrong correction, submit another.
+            </p>
+            <CorrectionForm ingredients={active} />
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Central ingredient stock</h2>
@@ -144,10 +158,14 @@ export default async function IngredientsPage() {
                   <td className="px-4 py-2 tabular-nums">{m.date.toISOString().slice(0, 10)}</td>
                   <td className="px-4 py-2 font-medium">{m.ingredient.name}</td>
                   <td className="px-4 py-2 text-zinc-500">
-                    {m.movementType === "IN" ? "Delivery" : m.sourceType === "MIXING" ? "Mixing" : "Out"}
+                    {m.sourceType === "DELIVERY"
+                      ? "Delivery"
+                      : m.sourceType === "MIXING"
+                        ? "Mixing"
+                        : "Correction"}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">
-                    {m.movementType === "IN" ? "+" : "−"}
+                    {m.postQuantity.greaterThanOrEqualTo(m.preQuantity) ? "+" : "−"}
                     {m.quantity.toFixed(3)}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{m.postQuantity.toFixed(3)}</td>

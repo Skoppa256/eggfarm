@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { IngredientCategory, Role } from "@/generated/prisma/enums";
-import { InsufficientIngredientError } from "@/lib/errors";
+import { ConflictError, InsufficientIngredientError } from "@/lib/errors";
 import { prisma, TX_OPTIONS } from "@/lib/server/db";
 import {
   drawIngredientTx,
   getIngredientStock,
   recordDelivery,
+  recordIngredientCorrection,
 } from "@/lib/server/ingredientLedger";
 
 import { resetDb } from "../../../test/helpers";
@@ -64,5 +65,37 @@ describe("ingredient ledger — the only writer of ingredient stock (rule 5.4 mi
     expect(await stockOf(ingredientId)).toBe(29.5);
     const out = await prisma.ingredientMovement.findFirstOrThrow({ where: { movementType: "OUT" } });
     expect([out.sourceType, out.quantity.toNumber(), out.postQuantity.toNumber()]).toEqual(["MIXING", 70.5, 29.5]);
+  });
+});
+
+describe("ingredient stock correction — supervised & immutable (A31 closed)", () => {
+  it("adjusts the balance with an immutable CORRECTION movement carrying pre/post", async () => {
+    const { userId, ingredientId } = await setup();
+    await recordDelivery({ ingredientId, quantity: 500, enteredById: userId });
+
+    await recordIngredientCorrection({
+      ingredientId,
+      newQuantity: 480.25,
+      reason: "Physical count after a spillage in the feed store",
+      enteredById: userId,
+    });
+    expect(await stockOf(ingredientId)).toBe(480.25);
+
+    const corr = await prisma.ingredientMovement.findFirstOrThrow({ where: { movementType: "CORRECTION" } });
+    expect(corr.sourceType).toBe("CORRECTION");
+    expect(corr.preQuantity.toNumber()).toBe(500);
+    expect(corr.postQuantity.toNumber()).toBe(480.25);
+    expect(corr.reason).toContain("Physical count");
+  });
+
+  it("rejects a reason under 20 chars, changing nothing", async () => {
+    const { userId, ingredientId } = await setup();
+    await recordDelivery({ ingredientId, quantity: 500, enteredById: userId });
+
+    await expect(
+      recordIngredientCorrection({ ingredientId, newQuantity: 400, reason: "too short", enteredById: userId }),
+    ).rejects.toBeInstanceOf(ConflictError);
+    expect(await stockOf(ingredientId)).toBe(500); // unchanged
+    expect(await prisma.ingredientMovement.count({ where: { movementType: "CORRECTION" } })).toBe(0);
   });
 });
