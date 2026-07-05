@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
 export default function Home() {
-  // Slice 1 has a single screen. Auth + a real landing/dashboard arrive later.
-  redirect("/warehouse");
+  // The dashboard is every role's landing (the Owner's home; SRS §3.8 / UC-03).
+  redirect("/dashboard");
 }

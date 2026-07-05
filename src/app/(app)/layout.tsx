@@ -7,7 +7,10 @@ import { getSessionUser, type Role } from "@/lib/server/auth";
 import { logoutAction } from "./actions";
 
 function navLinks(role: Role): { href: string; label: string }[] {
-  const links = [{ href: "/warehouse", label: "Warehouse" }];
+  const links = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/warehouse", label: "Warehouse" },
+  ];
   if (role === "ADMIN" || role === "SUPERADMIN") {
     links.push({ href: "/collections", label: "Collection" });
     links.push({ href: "/grading", label: "Grading" });
