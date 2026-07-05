@@ -12,7 +12,10 @@ export function computeHari(placementAge: number, chickInDate: Date, asOf: Date)
   return placementAge + daysBetween(chickInDate, asOf);
 }
 
-/** Flock age in whole weeks = floor(HARI / 7). */
+/**
+ * Flock age in weeks = ceil(HARI / 7). The farm counts by bird age, so day-120 falls in
+ * week 18 and day-119 (an exact multiple of 7) is week 17 (SRS §3.9, confirmed).
+ */
 export function computeMinggu(hari: number): number {
-  return Math.floor(hari / 7);
+  return Math.ceil(hari / 7);
 }

@@ -13,12 +13,13 @@ describe("flock age (SRS §3.9)", () => {
     expect(computeHari(113, chickIn, D("2026-07-15"))).toBe(127); // +14 days
   });
 
-  it("MINGGU = floor(HARI / 7)", () => {
-    expect(computeMinggu(113)).toBe(16);
-    expect(computeMinggu(120)).toBe(17);
-    expect(computeMinggu(127)).toBe(18);
+  it("MINGGU = ceil(HARI / 7) — the farm counts by bird age (day-120 = week 18)", () => {
+    expect(computeMinggu(119)).toBe(17); // exact multiple of 7
+    expect(computeMinggu(120)).toBe(18);
+    expect(computeMinggu(126)).toBe(18); // exact multiple of 7
+    expect(computeMinggu(127)).toBe(19);
     expect(computeMinggu(0)).toBe(0);
-    expect(computeMinggu(6)).toBe(0);
+    expect(computeMinggu(1)).toBe(1);
     expect(computeMinggu(7)).toBe(1);
   });
 });
