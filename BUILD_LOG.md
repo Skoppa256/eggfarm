@@ -4,18 +4,18 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 9)
+## CURRENT STATUS (updated after Slice 10)
 
-- **Slices complete & committed:** Slices 1–6 + refactor + WITA fix, Slice 7
-  (buyers + sales & dispatch), Slice 8 (flock & placement lifecycle), and **Slice 9
-  (daily farmhouse recording + three pre-slice foundation items)**.
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **98/98 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 10 (PAKAN feed management & mixing) — supplies **PAKAN MASUK** to the
-  daily record, at which point the feed block (TERSEDIA/INTAKE/GRAM-EKOR/FCR) becomes
-  real and gets frozen write-once (this slice computes it provisionally with MASUK = 0).
-- **⚠️ TWO STOP-and-ask refinements are awaiting your call** (implemented at the current
-  committed behavior, not blocking) — see the top two items under "Needs your review":
-  day-0 (chick-in-day) mortality, and the MINGGU convention.
+- **Slices complete & committed:** Slices 1–9, and **Slice 10 (PAKAN — feed ingredient
+  master + central stock ledger + deliveries, and feed mixing + JENIS + pull-list)**, in
+  two commits (`…master, stock ledger & deliveries` then `…mixing, JENIS & pull-list`).
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **118/118 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Next up:** Slice 11 (OVK inventory) — one central office store; delivery in, office→kandang
+  transfer is the stock-down event; daily OBAT/VITAMIN notes stay decoupled (already so).
+- **The Slice 9 feed block is now real:** mixing supplies PAKAN MASUK, which posts write-once
+  onto the daily record and freezes TERSEDIA/INTAKE/GRAM-EKOR/FCR + JENIS (§5.3).
+- **⚠️ TWO STOP-and-ask refinements from Slice 9 are still awaiting your call** (day-0
+  mortality, MINGGU convention) — unchanged; see "Needs your review".
 - **Timezone: CONFIRMED WITA.** Farm is in Makassar → business day is Asia/Makassar
   (WITA, UTC+8, no DST), in `src/lib/dates.ts` (committed `b1b00df`). Settled.
 - **Note:** this repo is under `~/Documents` (iCloud-synced), which spawns `"* 2"` conflict copies
@@ -31,7 +31,8 @@ Running log of what was built, slice by slice. Newest summary on top.
 1. `slice1_warehouse_ledger` · 2. `slice2_auth_users` · 3. `enteredby_fk_to_user` ·
 4. `slice3_config_master_data` · 5. `slice4_collection_input` · 6. `slice5_grading` ·
 7. `slice6_low_stock_thresholds` · 8. `slice7_buyers_sales` · 9. `slice8_flock_placement` ·
-10. `slice9_placement_active_unique` (raw-SQL partial index) · 11. `slice9_daily_record`.
+10. `slice9_placement_active_unique` (raw-SQL partial index) · 11. `slice9_daily_record` ·
+12. `slice10_pakan` (ingredient master + stock ledger + mixing tables + DailyRecord feed columns).
 
 **Note on the partial index (#10):** `Placement_farmhouseId_active_key` is a partial
 UNIQUE index (`WHERE status = 'ACTIVE'`) that Prisma can't express in `schema.prisma`, so
@@ -131,6 +132,30 @@ I'll change the one-line behavior + its test.
   sub-split firms progressively; the daily total is unaffected either way.
 - **`resolvePlacementForDate` picks the newest placement covering the date (A30).** If a kandang is
   emptied and re-populated on the SAME day (rare), the daily record attaches to the newer placement.
+
+**Slice 10 (PAKAN) decisions (resolved conservatively; flag any you'd change):**
+- **Ingredient stock mirrors the egg ledger (A31).** `ingredientLedger.ts` is the sole writer of
+  central ingredient stock — an append-only `IngredientMovement` ledger + an `IngredientStock`
+  balance cache, FOR-UPDATE-locked, kg in Decimal (never float), rejecting an over-draw atomically.
+  A supervised ingredient *correction* path isn't built yet (the `IngredientSourceType.CORRECTION`
+  value is reserved); to fix a mis-keyed delivery today you'd record a compensating delivery.
+- **Mixing is confirm-once per kandang/day (A32).** Confirming freezes the requirement/MASUK/JENIS
+  and draws every line down. There's no editing a confirmed mix (a mistaken mix would need a
+  reversal/correction path, deferred) — this keeps MASUK write-once and the draw-down un-double-counted.
+- **No-mix day draws nothing at all (A33).** When leftover ≥ requirement → TOTAL CAMPUR 0, so no
+  ingredient is drawn (mains 0 AND fixed supplements skipped) — the whole mix is a stock no-op; the
+  recipe is still logged (lines at weight 0) for next-day pre-fill, and JENIS is still derived.
+- **Ingredient unit conversions not built (A34).** FR-80's optional conversions (e.g. 1 karung = N
+  kg) are out; `baseUnit` is kg and deliveries/mixing are entered in kg. Add a conversion table if
+  sack/bag entry is wanted.
+- **Mains-% tolerance (A35).** Main-feed percentages must sum to 100% within ±0.01. Fixed
+  supplements/premix are entered in kg and are never scaled by netting.
+- **Requirement HIDUP (A36).** The requirement uses the latest HIDUP snapshot ≤ the consumption day
+  (snapshotted as `hidupAtMix`). Since mixing is done the night before, that's normally the prior
+  day's HIDUP — before the consumption day's own MATI/AFKIR is recorded.
+- **PAKAN MASUK freeze is first-write-wins (A37).** The daily record freezes its feed block from the
+  mix at record creation (mix already exists — the norm) OR when the mix is confirmed (record exists
+  first); whichever happens first. Because mixing is confirm-once, MASUK is never rewritten.
 - **Flock editing after chick-in is still locked, EXCEPT Populasi Awal (Slice 8 → refined in 9).**
   Strain / chick-in date / placement age and the set of placements are fixed at creation; the
   lifecycle mutations are Superadmin end-placement and now the narrow Superadmin **Populasi Awal
@@ -191,6 +216,61 @@ I'll change the one-line behavior + its test.
 - **`SourceType.ADJUSTMENT`** added for Slice 1's generic foundation actions
   (Assumption A1). `enteredById` is now a **required FK to User** (refactor).
 - **Initial Superadmin password** is the seed default `superadmin123` — change it.
+
+---
+
+## Slice 10 — PAKAN (feed) management & mixing ✅
+
+**Goal (BUILD_PLAN / SRS §3.11, CLAUDE.md §6):** a single central raw-ingredient store
+(Superadmin master + Admin deliveries), per-kandang daily mixing that nets the fresh mix
+and draws ingredients down, a printable pull-list, and PAKAN MASUK posting write-once onto
+the daily record — making the Slice 9 feed block real. Two commits.
+
+### Ingredient store (commit 1 of 2)
+- **Schema** → migration #12 (bundles all Slice 10 tables): `Ingredient` master (name,
+  category, kg base unit), `IngredientStock` (balance cache) + `IngredientMovement`
+  (append-only ledger), the `MixingRecord`/`MixingLine` tables, and the DailyRecord PAKAN
+  columns. Enums `IngredientCategory` / `IngredientSourceType` / `MixLineKind`.
+- **`ingredientLedger.ts` — the ONLY writer of central ingredient stock (rule 5.4 mirror
+  of `ledger.ts`).** Deliveries (IN) and mixing draw-downs (OUT) funnel through one
+  FOR-UPDATE-locked core; movement + balance commit together; an over-draw is rejected
+  atomically, naming the short ingredient (`InsufficientIngredientError`). kg in Decimal.
+- **`ingredients.ts`** master CRUD (Superadmin) + Zod + actions (master = Superadmin;
+  deliveries = Admin/Superadmin; Owner rejected). **UI:** `/ingredients` (central stock,
+  delivery entry, recent movements, Superadmin master management); nav.
+- **`pakan.ts`** (pure): requirement, TOTAL CAMPUR netting (incl. no-mix floor), main
+  %-of-fresh-mix weights, and the JENIS render order — all worked-example tested.
+
+### Mixing (commit 2 of 2)
+- **`mixing.ts`:** one mix per kandang per consumption day. Requirement = HIDUP × intake
+  ÷ 1000 (`hidupAtMix` snapshot); TOTAL CAMPUR = requirement − yesterday's reusable
+  leftover, floored at 0 (= PAKAN MASUK). Mains fill the fresh mix by % (must sum to 100);
+  supplements/premix are fixed weights (not scaled). Confirm draws every line down from
+  central stock (via `ingredientLedger.ts`) atomically; a short ingredient rolls the whole
+  mix back. JENIS derived (konsentrat → premix → jagung → dedak). Recipe pre-fills from the
+  kandang's last mix. **PAKAN MASUK posts write-once onto the day's DailyRecord** (§5.3),
+  freezing TERSEDIA/REALISASI INTAKE/GRAM-EKOR/FCR + JENIS via the shared
+  `freezeDailyFeedBlockTx` — at record creation if the mix exists (night-before norm), else
+  when the mix is confirmed (first write wins).
+- **Actions** (Admin/Superadmin; Owner rejected). **UI:** `/mixing` (per-kandang screen —
+  requirement/leftover/netted mix, a live recipe editor with % vs fixed and a running
+  mains-% check, no-mix-day banner), printable `/mixing/pull-list`; the `/daily` feed block
+  now shows the real (frozen) PAKAN values + JENIS. Nav.
+
+### Key decisions
+- **Rule-5.4 discipline extended to feed:** one ledger file writes ingredient stock, exactly
+  as `ledger.ts` owns egg stock. Same locked-core + reject-negative posture (A31).
+- **Confirm-once mixing (A32)** keeps MASUK write-once and the draw-down un-double-counted;
+  **no-mix day draws nothing (A33)**; feed math is Decimal end-to-end.
+
+### Test status
+`pnpm test` → **118 passed** (28 files): +12 commit 1 (delivery/draw lockstep + over-draw
+reject naming the ingredient; PAKAN worked examples incl. 398.486 kg and no-mix; master
+Superadmin-only; delivery Owner-rejected/Admin-allowed) and +8 commit 2 (requirement +
+draw-down; no-mix MASUK 0; mains-%-vs-fixed; over-draw atomic rollback; MASUK/JENIS/FCR
+frozen write-once pull + push; mains≠100% + duplicate-day rejected; Owner rejected/Admin
+confirms). `tsc`, `eslint`, `next build` all clean. Broadened `tsconfig` exclude to catch
+all iCloud `"* N"` conflict copies (not just `" 2"`).
 
 ---
 

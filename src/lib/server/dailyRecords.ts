@@ -2,7 +2,15 @@ import "server-only";
 
 import { Prisma } from "@/generated/prisma/client";
 import { GradingStatus, SizeHealthGrade } from "@/generated/prisma/enums";
-import { computeEggBuckets, computeHdPercent, type EggBuckets } from "@/lib/daily";
+import {
+  computeEggBuckets,
+  computeFcr,
+  computeGramPerEkor,
+  computeHdPercent,
+  computePakanTersedia,
+  computeRealisasiIntake,
+  type EggBuckets,
+} from "@/lib/daily";
 import { toBusinessDate } from "@/lib/dates";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { prisma, TX_OPTIONS } from "@/lib/server/db";
@@ -12,7 +20,8 @@ import { applyDailyMortalityTx } from "@/lib/server/flocks";
 // active placement. Admin types the yellow fields; HARI/MINGGU/HIDUP come from the flock
 // layer, the egg buckets from collection (reconciled to grading), and HD% from both. The
 // stateful derived values (HIDUP, HD%) are frozen write-once at creation (§5.3); the egg
-// buckets and the PAKAN block derive live on read.
+// buckets derive live on read. The PAKAN block is frozen write-once once PAKAN MASUK is
+// known (from the Slice 10 mixing event) — see freezeDailyFeedBlockTx.
 
 export interface DailyKey {
   farmhouseId: string;
@@ -39,6 +48,49 @@ type Tx = Prisma.TransactionClient;
 
 const dec3 = (n: number) => new Prisma.Decimal(n.toFixed(3));
 const dec2 = (n: number) => new Prisma.Decimal(n.toFixed(2));
+
+/** The daily-record fields the PAKAN freeze reads (Admin inputs + frozen HIDUP). */
+interface FeedFreezeTarget {
+  id: string;
+  hidup: number;
+  pakanMasuk: Prisma.Decimal | null;
+  sisaDigunakan: Prisma.Decimal;
+  sisaDibuang: Prisma.Decimal;
+  beratTelur: Prisma.Decimal;
+}
+
+/**
+ * Freeze the PAKAN block onto a daily record from a known PAKAN MASUK (§5.3, write-once).
+ * TERSEDIA = MASUK + reusable leftover; REALISASI INTAKE = TERSEDIA − (DIGUNAKAN + DIBUANG);
+ * GRAM/EKOR = INTAKE / HIDUP × 1000; FCR = INTAKE / BERAT TELUR. No-op if already frozen
+ * (pakanMasuk set) — the first write wins, whether it happened at record creation (mix
+ * already existed) or when the mix was later confirmed.
+ */
+export async function freezeDailyFeedBlockTx(
+  tx: Tx,
+  record: FeedFreezeTarget,
+  masuk: number,
+  jenis: string,
+  reusableLeftoverIn: number,
+) {
+  if (record.pakanMasuk != null) return; // already frozen — write-once
+  const tersedia = computePakanTersedia(masuk, reusableLeftoverIn);
+  const intake = computeRealisasiIntake(tersedia, record.sisaDigunakan.toNumber(), record.sisaDibuang.toNumber());
+  const gram = computeGramPerEkor(intake, record.hidup);
+  const fcr = computeFcr(intake, record.beratTelur.toNumber());
+  await tx.dailyRecord.update({
+    where: { id: record.id },
+    data: {
+      pakanMasuk: dec3(masuk),
+      reusableLeftoverIn: dec3(reusableLeftoverIn),
+      pakanTersedia: dec3(tersedia),
+      realisasiIntake: dec3(intake),
+      gramPerEkor: dec2(gram),
+      fcr: fcr != null ? dec3(fcr) : null,
+      jenis,
+    },
+  });
+}
 
 function assertInput(input: DailyInput): void {
   if (!Number.isInteger(input.mati) || input.mati < 0 || !Number.isInteger(input.afkir) || input.afkir < 0) {
@@ -195,7 +247,7 @@ export async function createDailyRecord(key: DailyKey, input: DailyInput, ctx: C
     const buckets = computeEggBuckets(totals, split);
     const hdPercent = computeHdPercent(buckets.total, hidup);
 
-    return tx.dailyRecord.create({
+    const record = await tx.dailyRecord.create({
       data: {
         farmhouseId: key.farmhouseId,
         placementId: placement.id,
@@ -214,6 +266,18 @@ export async function createDailyRecord(key: DailyKey, input: DailyInput, ctx: C
         enteredById: ctx.userId,
       },
     });
+
+    // If the day was already mixed (mixing is done the night before), freeze the PAKAN
+    // block now from that mix's MASUK. Otherwise it stays null until the mix is confirmed.
+    const mix = await tx.mixingRecord.findUnique({
+      where: { farmhouseId_date: { farmhouseId: key.farmhouseId, date } },
+      select: { totalCampur: true, jenis: true, reusableLeftover: true },
+    });
+    if (mix) {
+      await freezeDailyFeedBlockTx(tx, record, mix.totalCampur.toNumber(), mix.jenis, mix.reusableLeftover.toNumber());
+      return tx.dailyRecord.findUniqueOrThrow({ where: { id: record.id } });
+    }
+    return record;
   }, TX_OPTIONS);
 }
 

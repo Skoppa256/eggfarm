@@ -18,6 +18,7 @@ import {
   resolvePlacementForDate,
 } from "@/lib/server/dailyRecords";
 import { resolveHidup } from "@/lib/server/flocks";
+import { findMixing } from "@/lib/server/mixing";
 
 import { DailyForm, type DailyFormDefaults } from "./daily-form";
 
@@ -121,11 +122,12 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
     );
   }
 
-  const [existing, buckets, reusableLeftoverIn, hidupAsOf] = await Promise.all([
+  const [existing, buckets, reusableLeftoverIn, hidupAsOf, mix] = await Promise.all([
     findDailyRecord(farmhouseId, date),
     liveEggBuckets(farmhouseId, date),
     previousReusableLeftover(placement.id, date),
     resolveHidup(placement.id, date),
+    findMixing(farmhouseId, date),
   ]);
 
   const hari = computeHari(placement.flock.placementAge, placement.flock.chickInDate, date);
@@ -133,15 +135,22 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
   const hidup = existing ? existing.hidup : (hidupAsOf ?? placement.populasiAwal);
   const isChickInDay = date.getTime() === placement.startDate.getTime();
 
-  // Provisional PAKAN block (PAKAN MASUK arrives with Slice 10 mixing → treated as 0).
+  // PAKAN block. If the record has frozen it (mixing done), show the frozen values (§5.3);
+  // else reflect the mix live (MASUK from mixing, or 0 if no mix yet).
   const sisaDigunakan = existing ? existing.sisaDigunakan.toNumber() : 0;
   const sisaDibuang = existing ? existing.sisaDibuang.toNumber() : 0;
   const beratTelur = existing ? existing.beratTelur.toNumber() : 0;
-  const pakanMasuk = 0;
-  const tersedia = computePakanTersedia(pakanMasuk, reusableLeftoverIn);
-  const intake = computeRealisasiIntake(tersedia, sisaDigunakan, sisaDibuang);
-  const gramEkor = computeGramPerEkor(intake, hidup);
-  const fcr = computeFcr(intake, beratTelur);
+  const frozen = existing?.pakanMasuk != null;
+  const pakanMasuk = frozen ? existing!.pakanMasuk!.toNumber() : mix ? mix.totalCampur.toNumber() : 0;
+  const tersedia = frozen
+    ? existing!.pakanTersedia!.toNumber()
+    : computePakanTersedia(pakanMasuk, reusableLeftoverIn);
+  const intake = frozen
+    ? existing!.realisasiIntake!.toNumber()
+    : computeRealisasiIntake(tersedia, sisaDigunakan, sisaDibuang);
+  const gramEkor = frozen ? existing!.gramPerEkor!.toNumber() : computeGramPerEkor(intake, hidup);
+  const fcr = frozen ? (existing!.fcr ? existing!.fcr.toNumber() : null) : computeFcr(intake, beratTelur);
+  const jenis = frozen ? existing!.jenis : (mix?.jenis ?? null);
 
   const defaults: DailyFormDefaults = existing
     ? {
@@ -195,16 +204,23 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
       <div>
         <h2 className="mb-2 text-sm font-semibold text-zinc-500">
           PAKAN & FCR{" "}
-          <span className="font-normal text-amber-600 dark:text-amber-400">
-            · provisional — PAKAN MASUK arrives with feed mixing (Slice 10)
+          <span
+            className={`font-normal ${frozen ? "text-zinc-400" : "text-amber-600 dark:text-amber-400"}`}
+          >
+            {frozen
+              ? "· recorded (frozen at save)"
+              : mix
+                ? "· from mixing — freezes when the daily record is saved"
+                : "· no mix for this day yet (MASUK 0)"}
           </span>
         </h2>
-        <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-6">
           <Stat label="MASUK (kg)" value={pakanMasuk} />
           <Stat label="TERSEDIA (kg)" value={tersedia} />
           <Stat label="INTAKE (kg)" value={intake} />
           <Stat label="GRAM/EKOR" value={gramEkor} />
           <Stat label="FCR" value={fcr ?? "—"} />
+          <Stat label="JENIS" value={jenis || "—"} />
         </div>
       </div>
 
