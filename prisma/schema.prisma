@@ -91,6 +91,29 @@ enum PlacementStatus {
   ENDED
 }
 
+/// Feed-ingredient category (SRS FR-80). Also fixes the JENIS render order:
+/// KONSENTRAT, then PREMIX, then GRAIN (jagung), then BRAN (dedak).
+enum IngredientCategory {
+  KONSENTRAT // Konsentrat / Finished Feed
+  PREMIX // Premix / Supplement
+  GRAIN // Grain / Jagung
+  BRAN // Bran / Dedak
+}
+
+/// What originated an ingredient-stock movement (mirror of egg SourceType).
+enum IngredientSourceType {
+  DELIVERY // Admin feed delivery — stock IN
+  MIXING // recipe draw-down on mixing confirm — stock OUT
+  CORRECTION // reserved for a future supervised ingredient correction
+}
+
+/// A mixing recipe line: a main feed by % of the fresh mix, or a fixed-weight
+/// supplement/premix that is not scaled by netting (SRS FR-84).
+enum MixLineKind {
+  MAIN_PERCENT
+  FIXED_WEIGHT
+}
+
 // ---------------------------------------------------------------------------
 // Master data
 // ---------------------------------------------------------------------------
@@ -208,9 +231,11 @@ model User {
   collectionRecords CollectionRecord[]
   gradingRecords    GradingRecord[]
   salesTransactions SalesTransaction[] @relation("SalesEnteredBy")
-  voidedSales       SalesTransaction[] @relation("SalesVoidedBy")
-  createdFlocks     Flock[]
-  dailyRecords      DailyRecord[]
+  voidedSales         SalesTransaction[] @relation("SalesVoidedBy")
+  createdFlocks       Flock[]
+  dailyRecords        DailyRecord[]
+  ingredientMovements IngredientMovement[]
+  mixingRecords       MixingRecord[]
 }
 
 /// Server-side session row. A signed httpOnly cookie (jose) carries only the
@@ -249,6 +274,7 @@ model Farmhouse {
   gradingRecords    GradingRecord[]
   placements        Placement[]
   dailyRecords      DailyRecord[]
+  mixingRecords     MixingRecord[]
 }
 
 /// Effective-dated farmhouse→warehouse mapping (SRS §7 "Mapping Log"). Append-only:
@@ -516,6 +542,7 @@ model Placement {
   farmhouse      Farmhouse        @relation(fields: [farmhouseId], references: [id])
   hidupSnapshots HidupSnapshot[]
   dailyRecords   DailyRecord[]
+  mixingRecords  MixingRecord[]
 
   @@index([farmhouseId, status])
   @@index([flockId])
@@ -549,10 +576,9 @@ model HidupSnapshot {
 /// FR-67). Admin types only a handful of yellow fields; the rest is derived. The
 /// stateful derived values are frozen write-once (§5.3): `hidup` (the day's running
 /// HIDUP, mirrored from HidupSnapshot) and `hdPercent`. The egg buckets are NOT
-/// stored — they derive live from collection (and reconcile to grading). The feed
-/// block (PAKAN TERSEDIA / REALISASI INTAKE / GRAM-EKOR / FCR) is derived on read for
-/// now; its write-once persistence lands with Slice 10 mixing, which supplies PAKAN
-/// MASUK — until then MASUK is treated as 0 and the feed block is provisional.
+/// stored — they derive live from collection (and reconcile to grading). The PAKAN
+/// block is frozen write-once once PAKAN MASUK is known (Slice 10 mixing): at record
+/// creation if the mix already exists, else when the mix is confirmed. Null until then.
 model DailyRecord {
   id            String   @id @default(cuid())
   farmhouseId   String
@@ -574,6 +600,16 @@ model DailyRecord {
   hidup     Int // running HIDUP for the day (from the HidupSnapshot ledger)
   hdPercent Decimal @db.Decimal(6, 2) // (Utuh+Lunak+Pecah+Kosong) / HIDUP * 100
 
+  // PAKAN block (Slice 10) — posted from the mixing event, frozen write-once (§5.3).
+  // Null until PAKAN MASUK is known (mixing done for the day); once set, never rewritten.
+  pakanMasuk         Decimal? @db.Decimal(12, 3) // = mixing TOTAL CAMPUR (fresh mix, kg)
+  reusableLeftoverIn Decimal? @db.Decimal(12, 3) // yesterday's SISA DIGUNAKAN at freeze time
+  pakanTersedia      Decimal? @db.Decimal(12, 3) // = MASUK + reusableLeftoverIn
+  realisasiIntake    Decimal? @db.Decimal(12, 3) // = TERSEDIA − (DIGUNAKAN + DIBUANG)
+  gramPerEkor        Decimal? @db.Decimal(10, 2) // = INTAKE / HIDUP × 1000
+  fcr                Decimal? @db.Decimal(10, 3) // = INTAKE / BERAT TELUR
+  jenis              String? // derived feed recipe string (JENIS)
+
   enteredById String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -585,4 +621,110 @@ model DailyRecord {
   @@unique([farmhouseId, date]) // one record per kandang per business day (FR-67)
   @@index([placementId, date])
   @@index([farmhouseId, date])
+}
+
+// ---------------------------------------------------------------------------
+// PAKAN — feed ingredients, central stock ledger, and mixing (Slice 10)
+// ---------------------------------------------------------------------------
+
+/// A raw feed ingredient in the central store (SRS FR-80). Superadmin-managed master
+/// data. `baseUnit` is the stock unit (kg); optional unit conversions (e.g. karung→kg)
+/// are handled at entry, not stored here for v2.
+model Ingredient {
+  id        String             @id @default(cuid())
+  name      String             @unique
+  category  IngredientCategory
+  baseUnit  String             @default("kg")
+  status    RecordStatus       @default(ACTIVE)
+  sortOrder Int                @default(0)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  stock     IngredientStock?
+  movements IngredientMovement[]
+  mixLines  MixingLine[]
+}
+
+/// Balance cache: current central quantity (kg) per ingredient. DERIVED from the
+/// IngredientMovement ledger and written ONLY by src/lib/server/ingredientLedger.ts
+/// (rule 5.4 mirror). If it ever disagrees with the folded ledger, the ledger wins.
+model IngredientStock {
+  id              String   @id @default(cuid())
+  ingredientId    String   @unique
+  currentQuantity Decimal  @default(0) @db.Decimal(12, 3) // kg; never negative
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+}
+
+/// Append-only ledger of every central ingredient-stock change (mirror of the egg
+/// StockMovement). NEVER updated/deleted; written ONLY by ingredientLedger.ts.
+/// `quantity` is the positive magnitude (kg); direction is `movementType` (IN/OUT).
+model IngredientMovement {
+  id                String               @id @default(cuid())
+  ingredientId      String
+  movementType      MovementType // IN (delivery) / OUT (mixing draw-down)
+  quantity          Decimal              @db.Decimal(12, 3) // magnitude kg (> 0)
+  sourceType        IngredientSourceType
+  sourceReferenceId String? // originating record (delivery / mixing) id
+  reason            String?
+  preQuantity       Decimal              @db.Decimal(12, 3)
+  postQuantity      Decimal              @db.Decimal(12, 3)
+  date              DateTime             @default(now()) // business date of the movement
+  enteredById       String
+  createdAt         DateTime             @default(now())
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+  enteredBy  User       @relation(fields: [enteredById], references: [id])
+
+  @@index([ingredientId, date])
+  @@index([enteredById])
+}
+
+/// One kandang's mixing event for a consumption day (SRS §3.11). Mixed the night
+/// before, dated to the day eaten. The computed values are frozen write-once on
+/// confirmation (§5.3): the requirement, the reusable-leftover snapshot, TOTAL CAMPUR
+/// (= PAKAN MASUK), and the JENIS string. Confirming it draws each line's weight down
+/// from central ingredient stock (via ingredientLedger.ts).
+model MixingRecord {
+  id               String   @id @default(cuid())
+  farmhouseId      String
+  placementId      String
+  date             DateTime @db.Date // consumption day (WITA)
+  projectedIntake  Decimal  @db.Decimal(10, 3) // g/bird (Admin input per kandang)
+  hidupAtMix       Int // HIDUP snapshot used for the requirement
+  requirement      Decimal  @db.Decimal(12, 3) // kg = HIDUP × intake / 1000
+  reusableLeftover Decimal  @db.Decimal(12, 3) // kg = yesterday's SISA DIGUNAKAN
+  totalCampur      Decimal  @db.Decimal(12, 3) // kg = max(0, requirement − leftover) = MASUK
+  jenis            String // derived recipe string (JENIS)
+  enteredById      String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  farmhouse Farmhouse    @relation(fields: [farmhouseId], references: [id])
+  placement Placement    @relation(fields: [placementId], references: [id])
+  enteredBy User         @relation(fields: [enteredById], references: [id])
+  lines     MixingLine[]
+
+  @@unique([farmhouseId, date]) // one mix per kandang per consumption day
+  @@index([placementId, date])
+}
+
+/// One recipe line of a mixing event. A MAIN_PERCENT line's weight derives as
+/// `percent × TOTAL CAMPUR`; a FIXED_WEIGHT (supplement/premix) line's weight is taken
+/// as entered (not scaled). `computedWeight` is the frozen kg drawn from stock.
+model MixingLine {
+  id             String      @id @default(cuid())
+  mixingRecordId String
+  ingredientId   String
+  kind           MixLineKind
+  percent        Decimal?    @db.Decimal(6, 3) // MAIN_PERCENT: % of the fresh mix
+  fixedWeight    Decimal?    @db.Decimal(12, 3) // FIXED_WEIGHT: kg as entered
+  computedWeight Decimal     @db.Decimal(12, 3) // the frozen kg drawn from central stock
+
+  mixingRecord MixingRecord @relation(fields: [mixingRecordId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient   @relation(fields: [ingredientId], references: [id])
+
+  @@index([mixingRecordId])
 }

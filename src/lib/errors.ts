@@ -38,3 +38,20 @@ export class InsufficientStockError extends AppError {
     );
   }
 }
+
+/**
+ * A feed-ingredient draw-down (mixing) would drive central stock negative. The whole
+ * mixing transaction is rejected with no partial write; the message names the short
+ * ingredient (CLAUDE.md §5.4 mirror for ingredient stock). Quantities are kg.
+ */
+export class InsufficientIngredientError extends AppError {
+  constructor(
+    readonly ingredient: string,
+    readonly available: string,
+    readonly requested: string,
+  ) {
+    super(
+      `Insufficient ${ingredient}: have ${available} kg, need ${requested} kg.`,
+    );
+  }
+}

@@ -13,6 +13,7 @@ function navLinks(role: Role): { href: string; label: string }[] {
     links.push({ href: "/grading", label: "Grading" });
     links.push({ href: "/flocks", label: "Flocks" });
     links.push({ href: "/daily", label: "Daily" });
+    links.push({ href: "/ingredients", label: "Ingredients" });
     links.push({ href: "/sales", label: "Sales" });
     links.push({ href: "/buyers", label: "Buyers" });
     links.push({ href: "/farmhouses", label: "Farmhouses" });
