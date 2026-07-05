@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function NewSalePage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse");
+  if (user.role === "OWNER") redirect("/dashboard");
 
   const [warehouses, buyers, gradeTypes] = await Promise.all([
     listActiveWarehouses(),

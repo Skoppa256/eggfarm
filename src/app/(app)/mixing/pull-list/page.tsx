@@ -17,7 +17,7 @@ export default async function PullListPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse");
+  if (user.role === "OWNER") redirect("/dashboard");
 
   const sp = await searchParams;
   if (!sp.farmhouseId || !sp.date || !/^\d{4}-\d{2}-\d{2}$/.test(sp.date)) notFound();

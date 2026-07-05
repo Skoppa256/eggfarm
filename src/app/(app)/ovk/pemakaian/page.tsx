@@ -21,7 +21,7 @@ export default async function PemakaianPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse");
+  if (user.role === "OWNER") redirect("/dashboard");
 
   const sp = await searchParams;
   const farmhouses = await listActiveFarmhouses();

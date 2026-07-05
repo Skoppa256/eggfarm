@@ -16,7 +16,7 @@ const btnClass =
 export default async function BuyersPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse");
+  if (user.role === "OWNER") redirect("/dashboard");
 
   const buyers = await listBuyers();
 

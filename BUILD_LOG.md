@@ -4,17 +4,40 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
-## CURRENT STATUS (updated after Slice 12)
+## ✅ v2 COMPLETE — all 13 slices shipped (updated after Slice 13)
 
-- **Slices complete & committed:** Slices 1–10, the three confirmed-fact fixes, Slice 11
-  (OVK), and **Slice 12 (VAKSIN logging — activity log, no inventory)**.
-- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **140/140 pass** (against `eggfarm_test`) · `next build` succeeds.
-- **Next up:** Slice 13 (Dashboard, reports, exports) — the last v2 slice: KPI cards,
-  production/grade/flock-health charts, standard reports (role-scoped), Excel/CSV export.
-- **No open STOP-and-ask items.** All Slice-9 refinements resolved by confirmed facts
-  (A19 MINGGU = ceil; A21 day-0 mortality; A31 ingredient correction).
-- **All operational modules now built:** egg pipeline (collection → grading → warehouse →
-  sales), flock + daily recording, PAKAN, OVK, VAKSIN. Only the dashboard/reports remain.
+- **All 13 slices complete & committed**, plus three confirmed-fact fixes and a docs-sync
+  pass: egg pipeline (collection → grading → warehouse → sales), auth/roles, config/master
+  data, flock + daily recording, PAKAN (feed) mixing, OVK, VAKSIN, and **Slice 13 (dashboard,
+  reports & Excel export)**. This completes the SRS v2 scope.
+- **Gates:** `tsc --noEmit` clean · `eslint` clean · Vitest **145/145 pass** (against `eggfarm_test`) · `next build` succeeds.
+- **Nothing pending.** No open STOP-and-ask items; all A1–A40 resolved/standing (see the
+  As-Built Change Log at the bottom).
+
+### How to run / test
+```bash
+cd "<repo>/eggfarm" && nvm use          # Node 22 (Prisma 7 CLI won't run on the shell's Node 20)
+pnpm install                            # node_modules present; safe to re-run
+pnpm exec prisma generate               # generated client is gitignored — regenerate on a fresh clone
+pnpm db:seed                            # grade types + warehouse + initial Superadmin (superadmin / superadmin123)
+pnpm dev                                # http://localhost:3000 → redirects to /login, then /dashboard
+pnpm test                               # applies migrations to eggfarm_test, runs Vitest (145 tests)
+pnpm typecheck && pnpm lint && pnpm build
+```
+Every role lands on **/dashboard**; the Owner's whole app is **/dashboard + /reports** (all
+other routes reject Owner). 14 migrations apply in order (list below).
+
+### Logged suggestions for post-v2 (NOT built — flagged per scope discipline)
+- **Graphical charts (SRS §3.8 FR-49..58).** The dashboard ships the §8.2 KPI **cards** and
+  the reports ship tables; the "line/bar/proportion chart" wording of §3.8 is represented as
+  numeric cards + tabular reports. Adding a charting layer (e.g. ECharts) over the existing
+  read-only report services is a pure-UI follow-up — no new data work.
+- **Feed unit conversions (A34).** The per-item conversion mechanism exists (OVK); wiring
+  `karung→kg` into feed delivery/mixing is a small follow-up.
+- **Buyer aggregate profile (A18)** and **richer flock body-weight analytics** — deferred by
+  the SRS ("Should/Could Have"); the data is captured and reportable now.
+- **CSV alongside .xlsx** — export is ExcelJS `.xlsx`; a CSV variant of the same ReportResult
+  would be a few lines if wanted.
 - **Docs synced to as-built (docs-only pass, `docs:` commit — no code/schema/test changes).**
   `CLAUDE.md`: §5.4 now describes the **three parallel single-writer ledgers** (egg/feed/OVK,
   each with a supervised correction); §6 folds in WITA, MINGGU = ceil, day-0 mortality,
@@ -253,6 +276,54 @@ Each its own commit; all gates green.
   chick-in-day MATI/AFKIR.
 - **`feat: supervised ingredient stock correction` (A31 closed).** `recordIngredientCorrection`
   via `ingredientLedger.ts` — immutable CORRECTION with pre/post + reason ≥ 20; Admin/Superadmin.
+
+---
+
+## Slice 13 — Dashboard, reports & Excel export ✅ (v2 complete)
+
+**Goal (BUILD_PLAN / SRS §8, §3.8):** the Owner's read-only dashboard (KPI cards) and the
+standard report catalog with role-scoped access and Excel export. Strictly read-only — no
+report writes to any table (rule 5.4). Two commits.
+
+### KPI dashboard (commit 1 of 2)
+- **`reports.ts` — strictly read-only.** `getDashboardKpis(businessDay)` computes every §8.2
+  KPI with Prisma `aggregate`/`groupBy` (no per-record N+1): eggs collected, Angkat Rak by
+  Type, cracked % (Retak+Lunak / total, vs yesterday), Telur Kosong, grading completion,
+  warehouse stock, batches pending collection, eggs sold, top buyers this week, Type breakdown
+  (production + stock), flock mortality + HIDUP, average HD%, average FCR, feed mixed.
+- **`/dashboard`** renders the 14 cards (egg qty in rak+pcs) with a day selector; the root
+  redirect and every role's landing is the dashboard (SRS §3.8 / UC-03).
+
+### Standard reports + export (commit 2 of 2)
+- **20 report loaders** in `reports.ts`, each returning a generic `ReportResult`
+  (columns + rows) and registered in `REPORTS` with its **§8.1 access role**. Owner-viewable
+  (13): daily collection, cracked rate, telur kosong, grade distribution, angkat rak, warehouse
+  stock, kandang comparison, grading completion, buyer daily/weekly sales, daily farmhouse
+  record, flock production & health, feed consumption, vaksin log. Admin/Superadmin (5): stock
+  movement ledger, sales transaction log, feed ingredient stock, OVK stock, OVK pemakaian.
+  **Superadmin only:** stock correction audit. Reuses existing services (`getFilteredLedger`,
+  `listCorrections`, `pemakaianReport`, `listVaksinLogs`, `getOvk/IngredientStock`).
+- **One dynamic `/reports/[report]` page** renders any report with the filters the registry
+  declares (date / range / kandang / warehouse / type / buyer / vaccinator); a `/reports` hub
+  lists only what the role may see; a role-gated **`.xlsx` export route** (ExcelJS) serializes
+  the same data (Owner gets 403 on an ops-only report).
+- **Owner routing:** the root + every operational page now redirect Owner to `/dashboard`;
+  `/warehouse` (operational) rejects Owner too. Owner reaches all §8 Owner-reports + the
+  dashboard, and **nothing else** — writes stay Owner-rejected (no new write paths added).
+
+### Key decisions
+- **Read-only, single registry.** All reports funnel through `reports.ts` (rule 5.4 read-side)
+  and one `REPORTS` registry that is the authoritative place for §8.1 access roles.
+- **Charts → cards/tables (scope).** §8.2 KPI **cards** are built; §3.8's graphical charts are
+  represented as numeric cards + tabular reports (a charting library is a logged post-v2
+  suggestion, not built — the data/services are all in place).
+
+### Test status
+`pnpm test` → **145 passed** (34 files): +2 KPI (a full one-day world asserts every card —
+cracked 8.06%, grading completion 100%, HD% 100, FCR 2.0, stock 450, feed 100 kg — plus an
+empty day with no NaN) and +3 reports (loaders on the seeded world; the §8.1 access matrix
+with correction-audit Superadmin-only; a well-formed `.xlsx` export). `tsc`, `eslint`,
+`next build` all clean.
 
 ---
 

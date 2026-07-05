@@ -26,7 +26,7 @@ export default async function GradingPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse"); // grading input is Admin-only
+  if (user.role === "OWNER") redirect("/dashboard"); // grading input is Admin-only
 
   const sp = await searchParams;
   const [farmhouses, gradeTypes] = await Promise.all([

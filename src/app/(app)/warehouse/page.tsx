@@ -20,6 +20,7 @@ export default async function WarehouseStockPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (user.role === "OWNER") redirect("/dashboard"); // Owner sees stock via /reports/warehouse-stock
 
   const sp = await searchParams;
   const warehouses = await listWarehouses();

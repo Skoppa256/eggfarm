@@ -30,7 +30,7 @@ export default async function SalesPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse");
+  if (user.role === "OWNER") redirect("/dashboard");
 
   const sp = await searchParams;
   const [warehouses, buyers, gradeTypes] = await Promise.all([

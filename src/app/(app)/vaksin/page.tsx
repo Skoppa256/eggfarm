@@ -33,7 +33,7 @@ export default async function VaksinPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse");
+  if (user.role === "OWNER") redirect("/dashboard");
 
   const isSuperadmin = user.role === "SUPERADMIN";
   const sp = await searchParams;

@@ -20,7 +20,7 @@ export default async function ThresholdsPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse"); // threshold config is a write path
+  if (user.role === "OWNER") redirect("/dashboard"); // threshold config is a write path
 
   const sp = await searchParams;
   const warehouses = await listWarehouses();

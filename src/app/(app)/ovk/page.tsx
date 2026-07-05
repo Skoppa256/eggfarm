@@ -21,7 +21,7 @@ const btnClass =
 export default async function OvkPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse");
+  if (user.role === "OWNER") redirect("/dashboard");
 
   const isSuperadmin = user.role === "SUPERADMIN";
   const [items, active, stock, movements, kandangs] = await Promise.all([

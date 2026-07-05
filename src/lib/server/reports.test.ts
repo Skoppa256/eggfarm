@@ -9,7 +9,17 @@ import { createFlock } from "@/lib/server/flocks";
 import { submitGrading } from "@/lib/server/grading";
 import { recordDelivery } from "@/lib/server/ingredientLedger";
 import { createMixing } from "@/lib/server/mixing";
-import { getDashboardKpis } from "@/lib/server/reports";
+import { reportToXlsx } from "@/lib/server/reportExport";
+import {
+  buyerDailySalesReport,
+  crackedRateReport,
+  dailyCollectionReport,
+  getDashboardKpis,
+  gradeDistributionReport,
+  gradingCompletionReport,
+  reportsForRole,
+  warehouseStockReport,
+} from "@/lib/server/reports";
 
 import { resetDb } from "../../../test/helpers";
 
@@ -113,5 +123,57 @@ describe("dashboard KPIs (SRS §8.2) — worked examples", () => {
     expect(k.avgFcr).toBeNull();
     expect(k.feedMixedKg).toBe(0);
     expect(k.topBuyersThisWeek).toEqual([]);
+  });
+});
+
+describe("§8.1 report loaders — worked examples", () => {
+  it("daily collection, cracked rate, grade distribution, grading completion, stock, buyer sales", async () => {
+    await seedWorld();
+
+    const collection = await dailyCollectionReport({ date: TODAY });
+    expect(collection.rows).toEqual([["K1", 1, 900, 50, 30, 13, 90]]);
+
+    const cracked = await crackedRateReport({ from: TODAY, to: TODAY });
+    expect(cracked.rows[0]).toEqual(["K1 (K1)", 993, 80, "8.06%"]);
+
+    const dist = await gradeDistributionReport({ from: TODAY, to: TODAY });
+    expect(dist.rows[0]).toEqual(["A", "Normal", 300, "10 rak + 0 pcs"]); // sorted by pcs desc
+
+    const completion = await gradingCompletionReport({ date: TODAY });
+    expect(completion.rows).toEqual([["K1", 1, "SUBMITTED"]]);
+
+    const stock = await warehouseStockReport({});
+    expect(stock.rows.reduce((s, r) => s + Number(r[3]), 0)).toBe(450); // A 300 + Retak 40 + Plastik 20 + Angkat Rak 90
+
+    const buyerSales = await buyerDailySalesReport({ date: TODAY });
+    expect(buyerSales.rows).toEqual([["Toko Budi", "A", "Normal", 100, "3 rak + 10 pcs"]]);
+  });
+});
+
+describe("report access (SRS §8.1 roles)", () => {
+  it("gates each report to its access role — correction audit is Superadmin only", () => {
+    const slugs = (role: Role) => reportsForRole(role).map((r) => r.slug);
+    const owner = slugs(Role.OWNER);
+    expect(owner).toEqual(expect.arrayContaining(["daily-collection", "warehouse-stock", "vaksin-log", "grade-distribution"]));
+    expect(owner).not.toContain("stock-movement-ledger");
+    expect(owner).not.toContain("sales-transaction-log");
+    expect(owner).not.toContain("correction-audit");
+
+    const admin = slugs(Role.ADMIN);
+    expect(admin).toEqual(expect.arrayContaining(["stock-movement-ledger", "sales-transaction-log", "ovk-pemakaian"]));
+    expect(admin).not.toContain("correction-audit"); // Superadmin only
+
+    expect(slugs(Role.SUPERADMIN)).toContain("correction-audit");
+  });
+});
+
+describe("report export", () => {
+  it("produces a well-formed .xlsx (ZIP) file", async () => {
+    const buf = await reportToXlsx("Sales", {
+      columns: [{ label: "Buyer" }, { label: "Pcs", numeric: true }],
+      rows: [["Toko Budi", 100], ["Toko Sari", 250]],
+    });
+    expect(buf.length).toBeGreaterThan(100);
+    expect(buf.subarray(0, 2).toString("latin1")).toBe("PK"); // xlsx is a ZIP container
   });
 });

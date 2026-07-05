@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function FlockDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse");
+  if (user.role === "OWNER") redirect("/dashboard");
 
   const { id } = await params;
   const flock = await getFlock(id);

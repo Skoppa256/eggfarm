@@ -56,7 +56,7 @@ export default async function DailyPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse"); // daily recording is Admin-only
+  if (user.role === "OWNER") redirect("/dashboard"); // daily recording is Admin-only
 
   const sp = await searchParams;
   const farmhouses = await listActiveFarmhouses();

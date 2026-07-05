@@ -19,7 +19,7 @@ const btnClass =
 export default async function IngredientsPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse"); // read-only role has no feed ops
+  if (user.role === "OWNER") redirect("/dashboard"); // read-only role has no feed ops
 
   const isSuperadmin = user.role === "SUPERADMIN";
   const [ingredients, stock, active, movements] = await Promise.all([

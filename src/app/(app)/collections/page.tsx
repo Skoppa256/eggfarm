@@ -34,7 +34,7 @@ export default async function CollectionsPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse"); // collection input is Admin-only
+  if (user.role === "OWNER") redirect("/dashboard"); // collection input is Admin-only
 
   const sp = await searchParams;
   const [farmhouses, gradeTypes, warehouses] = await Promise.all([

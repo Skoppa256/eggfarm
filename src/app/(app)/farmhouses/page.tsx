@@ -18,7 +18,7 @@ const btnClass =
 export default async function FarmhousesPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/warehouse"); // read-only role
+  if (user.role === "OWNER") redirect("/dashboard"); // read-only role
 
   const [farmhouses, warehouses] = await Promise.all([
     listFarmhousesWithCurrent(businessToday()),
