@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { businessToday, formatDateOnly } from "@/lib/dates";
-import { isPcsGrade } from "@/lib/grades";
 import { getSessionUser } from "@/lib/server/auth";
 import {
   listActiveFarmhouses,
@@ -10,7 +9,6 @@ import {
 import { listCollections } from "@/lib/server/collections";
 import { resolveMaxBatches, resolveWarehouseId } from "@/lib/server/farmhouses";
 import { availableFromCollection, listGradings } from "@/lib/server/grading";
-import { PCS_PER_RAK } from "@/lib/units";
 
 import { GradingForm } from "./grading-form";
 
@@ -167,10 +165,10 @@ async function BatchGrading({
                 available={availableFromCollection(collection)}
                 status={status}
                 remarks={grading?.remarks ?? ""}
-                defaultsBySku={Object.fromEntries(
+                storedPcsBySku={Object.fromEntries(
                   (grading?.lineItems ?? []).map((li) => [
                     `${li.typeGradeId}:${li.sizeHealthGrade}`,
-                    isPcsGrade(li.sizeHealthGrade) ? li.quantity : li.quantity / PCS_PER_RAK,
+                    li.quantity,
                   ]),
                 )}
               />

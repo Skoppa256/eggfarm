@@ -99,4 +99,28 @@ describe("submitGradingAction (rule 5.5)", () => {
     expect(stock).toHaveLength(1);
     expect(stock[0].currentQuantity).toBe(300);
   });
+
+  it("honours the per-grade entry unit — pcs entered as-is, rak ×30", async () => {
+    const { whA, farmhouseId, normal } = await setup();
+    await loginAs(Role.ADMIN);
+
+    const result = await submitGradingAction(
+      null,
+      form({
+        farmhouseId,
+        date: "2026-07-01",
+        batchNumber: "1",
+        "u:A": "pcs",
+        [`q:${normal}:A`]: "50", // pcs → 50
+        "u:B": "rak",
+        [`q:${normal}:B`]: "2", // rak → 60
+      }),
+    );
+    expect(result.ok).toBe(true);
+    const stock = await getStock(whA);
+    const qty = (g: string) =>
+      stock.find((s) => s.sizeHealthGrade === g && s.typeGradeId === normal)?.currentQuantity ?? 0;
+    expect(qty("A")).toBe(50);
+    expect(qty("B")).toBe(60);
+  });
 });

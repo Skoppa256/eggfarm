@@ -15,8 +15,17 @@ const PATH = "/grading";
 const OPERATORS = ["ADMIN", "SUPERADMIN"] as const;
 const gradeableSet = new Set<string>(GRADEABLE_GRADES);
 
-/** Read `q:<typeGradeId>:<grade>` fields and convert to pcs (rak ×30, except pcs grades). */
+/**
+ * Read `q:<typeGradeId>:<grade>` fields and convert to pcs. Each grade's entry unit comes
+ * from its `u:<grade>` field ("rak" → ×30, "pcs" → as-is); the pcs-only grades default to
+ * pcs. This lets the operator grade any grade in rak OR pcs.
+ */
 function readLines(formData: FormData): GradingLineInput[] | { error: string } {
+  const units = new Map<string, "rak" | "pcs">();
+  for (const [field, value] of formData.entries()) {
+    if (field.startsWith("u:")) units.set(field.slice(2), value === "pcs" ? "pcs" : "rak");
+  }
+
   const lines: GradingLineInput[] = [];
   for (const [field, value] of formData.entries()) {
     if (!field.startsWith("q:")) continue;
@@ -32,10 +41,11 @@ function readLines(formData: FormData): GradingLineInput[] | { error: string } {
       return { error: "Grade quantity must be a whole, non-negative number." };
     }
     if (n === 0) continue;
+    const unit = units.get(gradeStr) ?? (isPcsGrade(grade) ? "pcs" : "rak");
     lines.push({
       sizeHealthGrade: grade,
       typeGradeId,
-      quantity: isPcsGrade(grade) ? n : rakToPcs(n),
+      quantity: unit === "pcs" ? n : rakToPcs(n),
     });
   }
   return lines;
