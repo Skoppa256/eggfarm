@@ -18,8 +18,10 @@ export function WarehouseTabs({
     { key: "stock", href: `/warehouse${q}`, label: "Stock" },
     { key: "ledger", href: `/warehouse/ledger${q}`, label: "Ledger" },
   ];
-  if (role === "ADMIN" || role === "SUPERADMIN") {
+  if (role === "SUPERADMIN") {
     tabs.push({ key: "correction", href: `/warehouse/correction${q}`, label: "Correction" });
+  }
+  if (role === "ADMIN" || role === "SUPERADMIN") {
     tabs.push({ key: "thresholds", href: `/warehouse/thresholds${q}`, label: "Thresholds" });
   }
   if (role === "SUPERADMIN") {

@@ -39,6 +39,7 @@ export default async function LedgerPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (user.role === "OWNER") redirect("/dashboard"); // Owner is read-only (stock via /reports)
 
   const sp = await searchParams;
   const warehouses = await listWarehouses();

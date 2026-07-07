@@ -17,11 +17,13 @@ import {
   previousReusableLeftover,
   resolvePlacementForDate,
 } from "@/lib/server/dailyRecords";
+import { resolveWarehouse } from "@/lib/server/farmhouses";
 import { resolveHidup } from "@/lib/server/flocks";
 import { findMixing } from "@/lib/server/mixing";
 import { vaksinForDailyRecord } from "@/lib/server/vaksin";
 
 import { DailyForm, type DailyFormDefaults } from "./daily-form";
+import { DailyReportCard, type DailyReport } from "./daily-report";
 
 export const dynamic = "force-dynamic";
 
@@ -103,7 +105,11 @@ export default async function DailyPage({
       </form>
 
       {farmhouseId ? (
-        <DailyEditor farmhouseId={farmhouseId} dateStr={dateStr} />
+        <DailyEditor
+          farmhouseId={farmhouseId}
+          dateStr={dateStr}
+          kandang={farmhouses.find((f) => f.id === farmhouseId)!}
+        />
       ) : (
         <p className="text-sm text-zinc-500">Choose a kandang and date, then Load.</p>
       )}
@@ -111,7 +117,15 @@ export default async function DailyPage({
   );
 }
 
-async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; dateStr: string }) {
+async function DailyEditor({
+  farmhouseId,
+  dateStr,
+  kandang,
+}: {
+  farmhouseId: string;
+  dateStr: string;
+  kandang: { name: string; code: string };
+}) {
   const date = new Date(`${dateStr}T00:00:00Z`);
   const placement = await resolvePlacementForDate(farmhouseId, date);
 
@@ -123,14 +137,16 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
     );
   }
 
-  const [existing, buckets, reusableLeftoverIn, hidupAsOf, mix, vaksinLogs] = await Promise.all([
-    findDailyRecord(farmhouseId, date),
-    liveEggBuckets(farmhouseId, date),
-    previousReusableLeftover(placement.id, date),
-    resolveHidup(placement.id, date),
-    findMixing(farmhouseId, date),
-    vaksinForDailyRecord(farmhouseId, date),
-  ]);
+  const [existing, buckets, reusableLeftoverIn, hidupAsOf, mix, vaksinLogs, warehouse] =
+    await Promise.all([
+      findDailyRecord(farmhouseId, date),
+      liveEggBuckets(farmhouseId, date),
+      previousReusableLeftover(placement.id, date),
+      resolveHidup(placement.id, date),
+      findMixing(farmhouseId, date),
+      vaksinForDailyRecord(farmhouseId, date),
+      resolveWarehouse(farmhouseId, date),
+    ]);
 
   const hari = computeHari(placement.flock.placementAge, placement.flock.chickInDate, date);
   const minggu = computeMinggu(hari);
@@ -167,6 +183,37 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
         keterangan: existing.keterangan ?? "",
       }
     : EMPTY_DEFAULTS;
+
+  // Screenshot-able WhatsApp summary — only once the day has a saved record.
+  const report: DailyReport | null = existing
+    ? {
+        farmName: warehouse?.name ?? "CV Piawai Djaya Farm", // the kandang's mapped warehouse
+        kandangName: kandang.name,
+        kandangCode: kandang.code,
+        dateStr,
+        strain: placement.flock.strain,
+        hari,
+        minggu,
+        hidup,
+        mati: existing.mati,
+        afkir: existing.afkir,
+        utuh: buckets.utuh,
+        lunak: buckets.lunak,
+        pecah: buckets.pecah,
+        kosong: buckets.kosong,
+        hdPercent: existing.hdPercent.toNumber(),
+        intake,
+        gramEkor,
+        fcr,
+        jenis,
+        vaksin: vaksinLogs.map(
+          (v) => `${v.vaksinType.name} (${v.vials} vial${v.vials > 1 ? "s" : ""}, ${v.vaccinator})`,
+        ),
+        obat: existing.obatNote ?? null,
+        vitamin: existing.vitaminNote ?? null,
+        keterangan: existing.keterangan ?? null,
+      }
+    : null;
 
   return (
     <section className="flex flex-col gap-5">
@@ -272,6 +319,8 @@ async function DailyEditor({ farmhouseId, dateStr }: { farmhouseId: string; date
           }
         />
       </div>
+
+      {report && <DailyReportCard report={report} />}
     </section>
   );
 }

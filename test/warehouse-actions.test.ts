@@ -84,9 +84,27 @@ describe("warehouse write actions (rule 5.5)", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it("lets an ADMIN submit a correction", async () => {
+  it("rejects an ADMIN on a stock correction (corrections are Superadmin-only)", async () => {
     const { warehouseId, typeGradeId } = await setup();
     await loginAs(Role.ADMIN);
+    await expect(
+      correctionAction(
+        null,
+        form({
+          warehouseId,
+          sizeHealthGrade: "A",
+          typeGradeId,
+          mode: "delta",
+          value: "25",
+          reason: "Admin must not be able to correct warehouse stock",
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("lets a SUPERADMIN submit a correction", async () => {
+    const { warehouseId, typeGradeId } = await setup();
+    await loginAs(Role.SUPERADMIN);
     const result = await correctionAction(
       null,
       form({

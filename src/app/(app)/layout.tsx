@@ -8,15 +8,15 @@ import { logoutAction } from "./actions";
 import { SideNavLinks } from "./side-nav";
 
 function navLinks(role: Role): { href: string; label: string }[] {
-  const links = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/reports", label: "Reports" },
-  ];
+  const links = [{ href: "/dashboard", label: "Dashboard" }];
+  // Reports: Owner + Superadmin (Admin is daily-ops only; reports are Superadmin-managed).
+  if (role === "OWNER" || role === "SUPERADMIN") {
+    links.push({ href: "/reports", label: "Reports" });
+  }
+  // Daily operations: Admin + Superadmin (incl. Warehouse egg-stock ops).
   if (role === "ADMIN" || role === "SUPERADMIN") {
-    links.push({ href: "/warehouse", label: "Warehouse" });
     links.push({ href: "/collections", label: "Collection" });
     links.push({ href: "/grading", label: "Grading" });
-    links.push({ href: "/flocks", label: "Flocks" });
     links.push({ href: "/daily", label: "Daily" });
     links.push({ href: "/ingredients", label: "Ingredients" });
     links.push({ href: "/mixing", label: "Mixing" });
@@ -24,10 +24,13 @@ function navLinks(role: Role): { href: string; label: string }[] {
     links.push({ href: "/vaksin", label: "Vaksin" });
     links.push({ href: "/sales", label: "Sales" });
     links.push({ href: "/buyers", label: "Buyers" });
-    links.push({ href: "/farmhouses", label: "Farmhouses" });
-    links.push({ href: "/warehouses", label: "Warehouses" });
+    links.push({ href: "/warehouse", label: "Warehouse" });
   }
+  // Structure & master data: Superadmin only (Warehouses master, Farmhouses, Flocks, catalogs, users).
   if (role === "SUPERADMIN") {
+    links.push({ href: "/warehouses", label: "Warehouses" });
+    links.push({ href: "/flocks", label: "Flocks" });
+    links.push({ href: "/farmhouses", label: "Farmhouses" });
     links.push({ href: "/units", label: "Units" });
     links.push({ href: "/grade-types", label: "Grade Types" });
     links.push({ href: "/users", label: "Users" });

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function FlocksPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/dashboard");
+  if (user.role !== "SUPERADMIN") redirect("/dashboard");
 
   const flocks = await listFlocks();
   const isSuperadmin = user.role === "SUPERADMIN";

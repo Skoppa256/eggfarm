@@ -93,26 +93,26 @@ describe("ingredient master + delivery actions (rule 5.5)", () => {
     expect(stock?.currentQuantity.toNumber()).toBe(800.5);
   });
 
-  it("rejects OWNER on a stock correction; lets an ADMIN correct with a reason", async () => {
+  it("stock correction is Superadmin only — rejects OWNER and ADMIN, lets SUPERADMIN correct", async () => {
     const ing = await prisma.ingredient.create({
       data: { name: "Dedak", category: IngredientCategory.BRAN },
     });
     const admin = await loginAs(Role.ADMIN);
     await recordDelivery({ ingredientId: ing.id, quantity: 100, enteredById: admin.id });
 
+    const reason = "Physical stock-take correction now";
+    // Owner and Admin are both rejected — corrections are Superadmin only.
     await loginAs(Role.OWNER);
     await expect(
-      correctIngredientAction(
-        null,
-        form({ ingredientId: ing.id, newQuantity: "90", reason: "Physical stock-take correction now" }),
-      ),
+      correctIngredientAction(null, form({ ingredientId: ing.id, newQuantity: "90", reason })),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await loginAs(Role.ADMIN);
+    await expect(
+      correctIngredientAction(null, form({ ingredientId: ing.id, newQuantity: "90", reason })),
     ).rejects.toBeInstanceOf(ForbiddenError);
 
-    await loginAs(Role.ADMIN);
-    const result = await correctIngredientAction(
-      null,
-      form({ ingredientId: ing.id, newQuantity: "90", reason: "Physical stock-take correction now" }),
-    );
+    await loginAs(Role.SUPERADMIN);
+    const result = await correctIngredientAction(null, form({ ingredientId: ing.id, newQuantity: "90", reason }));
     expect(result.ok).toBe(true);
     const stock = (await getIngredientStock()).find((s) => s.ingredientId === ing.id);
     expect(stock?.currentQuantity.toNumber()).toBe(90);

@@ -28,6 +28,7 @@ export default async function ReportPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (user.role === "ADMIN") redirect("/dashboard"); // reports are Owner/Superadmin only
 
   const { report: slug } = await params;
   const report = findReport(slug);

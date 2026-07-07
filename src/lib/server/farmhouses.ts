@@ -45,6 +45,22 @@ export async function resolveWarehouseId(farmhouseId: string, asOf: Date): Promi
 }
 
 /**
+ * The warehouse assigned to a farmhouse as of `asOf`, with its name/code (same
+ * effective-dated resolution as `resolveWarehouseId`). null if none yet.
+ */
+export async function resolveWarehouse(
+  farmhouseId: string,
+  asOf: Date,
+): Promise<{ id: string; name: string; code: string } | null> {
+  const mapping = await prisma.farmhouseWarehouseMapping.findFirst({
+    where: { farmhouseId, effectiveFrom: { lte: toBusinessDate(asOf) } },
+    orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }],
+    include: { warehouse: { select: { id: true, name: true, code: true } } },
+  });
+  return mapping?.warehouse ?? null;
+}
+
+/**
  * The max-batches-per-day in force for a farmhouse as of `asOf`: the setting with
  * the greatest effectiveFrom <= asOf (ties broken by createdAt). null if none yet.
  */

@@ -20,7 +20,7 @@ export default async function CorrectionPage({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/dashboard"); // corrections are a write path
+  if (user.role !== "SUPERADMIN") redirect("/dashboard"); // stock corrections are Superadmin-only
 
   const sp = await searchParams;
   const warehouses = await listWarehouses();

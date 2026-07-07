@@ -92,8 +92,8 @@ export async function correctIngredientAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  // Rule 5.5: a supervised ingredient correction is Admin/Superadmin; Owner rejected.
-  const user = await requireRole(...OPERATORS);
+  // Rule 5.5: an ingredient stock correction is Superadmin only.
+  const user = await requireRole("SUPERADMIN");
 
   const parsed = ingredientCorrectionSchema.safeParse({
     ingredientId: formData.get("ingredientId"),

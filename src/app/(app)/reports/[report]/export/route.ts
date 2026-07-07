@@ -7,6 +7,7 @@ import { findReport, toReportFilters } from "@/lib/server/reports";
 export async function GET(req: Request, { params }: { params: Promise<{ report: string }> }) {
   const user = await getSessionUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+  if (user.role === "ADMIN") return new Response("Forbidden", { status: 403 }); // reports are Owner/Superadmin only
 
   const { report: slug } = await params;
   const report = findReport(slug);

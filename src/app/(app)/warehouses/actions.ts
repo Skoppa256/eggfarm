@@ -10,13 +10,12 @@ import { requireRole } from "@/lib/server/auth";
 import { createWarehouse, setWarehouseStatus } from "@/lib/server/warehouses";
 
 const PATH = "/warehouses";
-const OPERATORS = ["ADMIN", "SUPERADMIN"] as const;
 
 export async function createWarehouseAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireRole(...OPERATORS);
+  await requireRole("SUPERADMIN");
   const parsed = createWarehouseSchema.safeParse({
     name: formData.get("name"),
     code: formData.get("code"),
@@ -35,7 +34,7 @@ export async function createWarehouseAction(
 }
 
 export async function setWarehouseStatusAction(formData: FormData): Promise<void> {
-  await requireRole(...OPERATORS);
+  await requireRole("SUPERADMIN");
   const parsed = statusToggleSchema.safeParse({
     id: formData.get("id"),
     status: formData.get("status"),

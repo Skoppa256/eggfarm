@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function ReportsHubPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (user.role === "ADMIN") redirect("/dashboard"); // reports are Owner/Superadmin only
 
   const reports = reportsForRole(user.role);
-  const isOps = user.role === "ADMIN" || user.role === "SUPERADMIN";
+  const isOps = user.role === "SUPERADMIN";
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 sm:p-8">

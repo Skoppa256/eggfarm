@@ -51,9 +51,9 @@ export default async function IngredientsPage() {
         </div>
       </section>
 
-      {active.length > 0 && (
+      {isSuperadmin && active.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Correct stock</h2>
+          <h2 className="mb-3 text-lg font-semibold">Correct stock (Superadmin)</h2>
           <div className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
             <p className="mb-3 text-xs text-zinc-500">
               A supervised, immutable correction (a compensating movement with pre/post and a

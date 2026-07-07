@@ -22,6 +22,7 @@ import { Role } from "@/generated/prisma/enums";
 import { ForbiddenError } from "@/lib/errors";
 import { createFarmhouseAction } from "@/app/(app)/farmhouses/actions";
 import { createUnitAction } from "@/app/(app)/units/actions";
+import { createWarehouseAction } from "@/app/(app)/warehouses/actions";
 import { createSession } from "@/lib/server/auth";
 import { prisma } from "@/lib/server/db";
 import { hashPassword } from "@/lib/server/password";
@@ -57,8 +58,9 @@ function form(fields: Record<string, string>): FormData {
   return fd;
 }
 
-// Role split: Admin manages operational structure (farmhouses/warehouses/mapping);
-// master data (units, grade types) is Superadmin-only.
+// Role split (as-built): operational STRUCTURE (farmhouses, warehouses) is now
+// Superadmin-managed, alongside master data (units, grade types). Admin does daily
+// ops but neither structure nor master data; Owner is read-only.
 describe("config action role split", () => {
   it("OWNER cannot create a farmhouse", async () => {
     await loginAs(Role.OWNER);
@@ -71,13 +73,37 @@ describe("config action role split", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it("ADMIN can create a farmhouse (operational structure)", async () => {
+  it("ADMIN cannot create a farmhouse (structure is Superadmin-only)", async () => {
     await loginAs(Role.ADMIN);
+    const warehouseId = await activeWarehouse();
+    await expect(
+      createFarmhouseAction(
+        null,
+        form({ name: "K", code: "K1", warehouseId, maxBatchesPerDay: "2" }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("SUPERADMIN can create a farmhouse", async () => {
+    await loginAs(Role.SUPERADMIN);
     const warehouseId = await activeWarehouse();
     const result = await createFarmhouseAction(
       null,
       form({ name: "K", code: "K1", warehouseId, maxBatchesPerDay: "2" }),
     );
+    expect(result.ok).toBe(true);
+  });
+
+  it("ADMIN cannot create a warehouse (structure is Superadmin-only)", async () => {
+    await loginAs(Role.ADMIN);
+    await expect(
+      createWarehouseAction(null, form({ name: "WH B", code: "WH-B" })),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("SUPERADMIN can create a warehouse", async () => {
+    await loginAs(Role.SUPERADMIN);
+    const result = await createWarehouseAction(null, form({ name: "WH B", code: "WH-B" }));
     expect(result.ok).toBe(true);
   });
 

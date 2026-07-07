@@ -8,14 +8,12 @@ import { correctionSchema } from "@/lib/schemas/warehouse";
 import { requireRole } from "@/lib/server/auth";
 import { recordCorrection } from "@/lib/server/ledger";
 
-const OPERATORS = ["ADMIN", "SUPERADMIN"] as const;
-
 export async function correctionAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  // Rule 5.5: Admin (+ Superadmin) only; Owner rejected.
-  const user = await requireRole(...OPERATORS);
+  // Rule 5.5: warehouse stock corrections are Superadmin-only (Admin + Owner rejected).
+  const user = await requireRole("SUPERADMIN");
 
   const parsed = correctionSchema.safeParse({
     warehouseId: formData.get("warehouseId"),

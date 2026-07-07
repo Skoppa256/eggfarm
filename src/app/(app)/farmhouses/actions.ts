@@ -22,15 +22,14 @@ import {
 
 const PATH = "/farmhouses";
 
-// Farmhouses are Admin-managed operational structure (Superadmin can do anything
-// Admin can). OWNER is read-only and excluded (rule 5.5).
-const OPERATORS = ["ADMIN", "SUPERADMIN"] as const;
+// Farmhouses are Superadmin-managed operational structure (rule 5.5); Admin and
+// Owner are both excluded from every farmhouse write path.
 
 export async function createFarmhouseAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const user = await requireRole(...OPERATORS);
+  const user = await requireRole("SUPERADMIN");
   const parsed = createFarmhouseSchema.safeParse({
     name: formData.get("name"),
     code: formData.get("code"),
@@ -55,7 +54,7 @@ export async function createFarmhouseAction(
 }
 
 export async function changeMappingAction(formData: FormData): Promise<void> {
-  const user = await requireRole(...OPERATORS);
+  const user = await requireRole("SUPERADMIN");
   const parsed = changeMappingSchema.safeParse({
     farmhouseId: formData.get("farmhouseId"),
     warehouseId: formData.get("warehouseId"),
@@ -74,7 +73,7 @@ export async function changeMappingAction(formData: FormData): Promise<void> {
 }
 
 export async function changeBatchAction(formData: FormData): Promise<void> {
-  const user = await requireRole(...OPERATORS);
+  const user = await requireRole("SUPERADMIN");
   const parsed = changeBatchSchema.safeParse({
     farmhouseId: formData.get("farmhouseId"),
     maxBatchesPerDay: formData.get("maxBatchesPerDay"),
@@ -93,7 +92,7 @@ export async function changeBatchAction(formData: FormData): Promise<void> {
 }
 
 export async function setFarmhouseStatusAction(formData: FormData): Promise<void> {
-  await requireRole(...OPERATORS);
+  await requireRole("SUPERADMIN");
   const parsed = statusToggleSchema.safeParse({
     id: formData.get("id"),
     status: formData.get("status"),

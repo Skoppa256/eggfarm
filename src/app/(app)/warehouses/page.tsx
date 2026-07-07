@@ -14,7 +14,7 @@ const btnClass =
 export default async function WarehousesPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "OWNER") redirect("/dashboard");
+  if (user.role !== "SUPERADMIN") redirect("/dashboard"); // warehouse master data is Superadmin-managed
 
   const warehouses = await listWarehouses();
 
@@ -22,7 +22,7 @@ export default async function WarehousesPage() {
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 sm:p-8">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Warehouses</h1>
-        <p className="text-sm text-zinc-500">Operational structure — Admin managed.</p>
+        <p className="text-sm text-zinc-500">Operational structure — Superadmin managed.</p>
       </header>
 
       <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
