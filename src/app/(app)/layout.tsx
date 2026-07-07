@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { getSessionUser, type Role } from "@/lib/server/auth";
 
 import { logoutAction } from "./actions";
+import { SideNavLinks } from "./side-nav";
 
 function navLinks(role: Role): { href: string; label: string }[] {
   const links = [
@@ -44,37 +45,28 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
-        <div className="flex items-center gap-6">
-          <span className="font-semibold tracking-tight">EggFarm IMS</span>
-          <nav className="flex items-center gap-4 text-sm">
-            {navLinks(user.role).map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+    <div className="flex min-h-screen w-full">
+      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50">
+        <div className="border-b border-zinc-200 px-4 py-3">
+          <Link href="/dashboard" className="font-semibold tracking-tight">
+            EggFarm IMS
+          </Link>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-zinc-500">
-            {user.name} · {user.role}
-          </span>
-          <form action={logoutAction}>
+        <SideNavLinks links={navLinks(user.role)} />
+        <div className="border-t border-zinc-200 p-3">
+          <div className="px-1 text-sm font-medium text-zinc-700">{user.name}</div>
+          <div className="px-1 text-xs text-zinc-400">{user.role}</div>
+          <form action={logoutAction} className="mt-2">
             <button
               type="submit"
-              className="rounded border border-zinc-300 px-3 py-1 font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              className="w-full rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100"
             >
               Log out
             </button>
           </form>
         </div>
-      </header>
-      <div className="flex-1">{children}</div>
+      </aside>
+      <main className="min-w-0 flex-1">{children}</main>
     </div>
   );
 }
