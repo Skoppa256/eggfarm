@@ -52,7 +52,9 @@ export default async function MixingPage({
   // no-mix days → leave empty). Never pre-fill 0. Bounded to the 5-row Riwayat window.
   const prefill = history.find((m) => m.totalCampur.toNumber() > 0);
   const prefillIntake = prefill ? prefill.projectedIntake.toNumber() : undefined;
-  const intakeDefault = sp.intake ?? (prefillIntake != null ? String(prefillIntake) : "");
+  // `||` (not `??`): the auto-submit sends intake="" (empty string, not undefined) when the
+  // kandang changes, so an empty value must fall back to the pre-fill — matching the hint below.
+  const intakeDefault = sp.intake || (prefillIntake != null ? String(prefillIntake) : "");
   const mixingRows: MixingRiwayatRow[] = history.map((m) => ({
     dateStr: fmtRiwayatDate(m.date),
     hidup: m.hidupAtMix,
