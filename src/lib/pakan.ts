@@ -42,10 +42,10 @@ const CATEGORY_RANK = new Map<IngredientCategory, number>(
 
 /** Human labels for the ingredient categories (shared client + server). */
 export const CATEGORY_LABELS: Record<IngredientCategory, string> = {
-  KONSENTRAT: "Konsentrat / Finished feed",
-  PREMIX: "Premix / Supplement",
-  GRAIN: "Grain / Jagung",
-  BRAN: "Bran / Dedak",
+  KONSENTRAT: "Konsentrat / Pakan jadi",
+  PREMIX: "Premix / Suplemen",
+  GRAIN: "Biji-bijian / Jagung",
+  BRAN: "Dedak",
 };
 
 export interface JenisEntry {

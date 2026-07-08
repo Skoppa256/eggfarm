@@ -23,12 +23,12 @@ export async function createGradeTypeAction(
     sortOrder: formData.get("sortOrder") ?? 0,
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     const gradeType = await createGradeType(parsed.data);
     revalidatePath(PATH);
-    return { ok: true, message: `Created grade type ${gradeType.name}.` };
+    return { ok: true, message: `Tipe grade ${gradeType.name} dibuat.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -42,7 +42,7 @@ export async function setGradeTypeStatusAction(formData: FormData): Promise<void
     status: formData.get("status"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   await setGradeTypeStatus(
     parsed.data.id,

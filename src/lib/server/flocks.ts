@@ -64,18 +64,18 @@ export async function createFlock(input: FlockInput, ctx: Ctx) {
   const chickInDate = toBusinessDate(input.chickInDate);
 
   if (!Number.isInteger(input.placementAge) || input.placementAge < 0) {
-    throw new ConflictError("Placement age must be a non-negative whole number of days.");
+    throw new ConflictError("Umur penempatan harus bilangan bulat non-negatif dalam hari.");
   }
   if (input.placements.length === 0) {
-    throw new ConflictError("Assign the flock to at least one kandang.");
+    throw new ConflictError("Tetapkan flock ke minimal satu kandang.");
   }
   const seen = new Set<string>();
   for (const p of input.placements) {
     if (!Number.isInteger(p.populasiAwal) || p.populasiAwal <= 0) {
-      throw new ConflictError("Each placement needs a positive Populasi Awal.");
+      throw new ConflictError("Setiap penempatan butuh Populasi Awal positif.");
     }
     if (seen.has(p.farmhouseId)) {
-      throw new ConflictError("A kandang appears more than once in this chick-in.");
+      throw new ConflictError("Sebuah kandang muncul lebih dari sekali dalam chick-in ini.");
     }
     seen.add(p.farmhouseId);
   }
@@ -83,10 +83,10 @@ export async function createFlock(input: FlockInput, ctx: Ctx) {
   for (const p of input.placements) {
     const farmhouse = await prisma.farmhouse.findUnique({ where: { id: p.farmhouseId } });
     if (!farmhouse) {
-      throw new NotFoundError("Kandang not found.");
+      throw new NotFoundError("Kandang tidak ditemukan.");
     }
     if (farmhouse.status !== RecordStatus.ACTIVE) {
-      throw new ConflictError(`Kandang ${farmhouse.code} is not active.`);
+      throw new ConflictError(`Kandang ${farmhouse.code} tidak aktif.`);
     }
   }
 
@@ -99,7 +99,7 @@ export async function createFlock(input: FlockInput, ctx: Ctx) {
       });
       if (occupied) {
         throw new ConflictError(
-          `Kandang ${occupied.farmhouse.code} already has an active placement.`,
+          `Kandang ${occupied.farmhouse.code} sudah punya penempatan aktif.`,
         );
       }
     }
@@ -142,14 +142,14 @@ export async function createFlock(input: FlockInput, ctx: Ctx) {
 export async function endPlacement(placementId: string, endDate: Date) {
   const placement = await prisma.placement.findUnique({ where: { id: placementId } });
   if (!placement) {
-    throw new NotFoundError("Placement not found.");
+    throw new NotFoundError("Penempatan tidak ditemukan.");
   }
   if (placement.status === PlacementStatus.ENDED) {
-    throw new ConflictError("This placement has already ended.");
+    throw new ConflictError("Penempatan ini sudah berakhir.");
   }
   const end = toBusinessDate(endDate);
   if (end.getTime() < toBusinessDate(placement.startDate).getTime()) {
-    throw new ConflictError("End date cannot be before the chick-in date.");
+    throw new ConflictError("Tanggal akhir tidak boleh sebelum tanggal chick-in.");
   }
 
   return prisma.$transaction(async (tx) => {
@@ -158,7 +158,7 @@ export async function endPlacement(placementId: string, endDate: Date) {
       data: { status: PlacementStatus.ENDED, endDate: end },
     });
     if (claimed.count === 0) {
-      throw new ConflictError("This placement has already ended.");
+      throw new ConflictError("Penempatan ini sudah berakhir.");
     }
     const stillActive = await tx.placement.count({
       where: { flockId: placement.flockId, status: PlacementStatus.ACTIVE },
@@ -184,22 +184,22 @@ export async function endPlacement(placementId: string, endDate: Date) {
  */
 export async function correctPopulasiAwal(placementId: string, newPopulasiAwal: number) {
   if (!Number.isInteger(newPopulasiAwal) || newPopulasiAwal <= 0) {
-    throw new ConflictError("Populasi Awal must be a positive whole number.");
+    throw new ConflictError("Populasi Awal harus bilangan bulat positif.");
   }
   const placement = await prisma.placement.findUnique({ where: { id: placementId } });
   if (!placement) {
-    throw new NotFoundError("Placement not found.");
+    throw new NotFoundError("Penempatan tidak ditemukan.");
   }
   const delta = newPopulasiAwal - placement.populasiAwal;
   if (delta === 0) {
-    throw new ConflictError("That is already the Populasi Awal — nothing to correct.");
+    throw new ConflictError("Itu sudah menjadi Populasi Awal — tidak ada yang perlu dikoreksi.");
   }
   // The hatch is for an early chick-in typo. Once daily records exist they have frozen
   // HIDUP/HD% snapshots (§5.3) that a re-base would silently desync, so refuse then.
   const recorded = await prisma.dailyRecord.count({ where: { placementId } });
   if (recorded > 0) {
     throw new ConflictError(
-      "Daily recording has already begun for this placement — Populasi Awal can no longer be corrected.",
+      "Pencatatan harian sudah dimulai untuk penempatan ini — Populasi Awal tidak bisa lagi dikoreksi.",
     );
   }
 
@@ -211,7 +211,7 @@ export async function correctPopulasiAwal(placementId: string, newPopulasiAwal: 
     const minHidup = snapshots.reduce((m, s) => Math.min(m, s.hidup), Infinity);
     if (Number.isFinite(minHidup) && minHidup + delta < 0) {
       throw new ConflictError(
-        "That correction would drive a later HIDUP below zero (too many deaths already recorded).",
+        "Koreksi itu akan membuat HIDUP di kemudian hari di bawah nol (terlalu banyak kematian sudah dicatat).",
       );
     }
 
@@ -268,7 +268,7 @@ export async function applyDailyMortalityTx(
   afkir: number,
 ) {
   if (!Number.isInteger(mati) || mati < 0 || !Number.isInteger(afkir) || afkir < 0) {
-    throw new ConflictError("MATI and AFKIR must be non-negative whole numbers.");
+    throw new ConflictError("MATI dan AFKIR harus bilangan bulat non-negatif.");
   }
   const on = toBusinessDate(date);
 
@@ -285,7 +285,7 @@ export async function applyDailyMortalityTx(
     // Day-0: `on` is the chick-in date. Net arrival-day deaths off Populasi Awal by
     // updating the seed snapshot (write-once — only a still-fresh seed may be recorded).
     if (!onDate) {
-      throw new ConflictError("No prior HIDUP — the placement has no chick-in before this date.");
+      throw new ConflictError("Tidak ada HIDUP sebelumnya — penempatan tidak punya chick-in sebelum tanggal ini.");
     }
     const placement = await tx.placement.findUniqueOrThrow({
       where: { id: placementId },
@@ -293,22 +293,22 @@ export async function applyDailyMortalityTx(
     });
     const fresh = onDate.mati === 0 && onDate.afkir === 0 && onDate.hidup === placement.populasiAwal;
     if (!fresh) {
-      throw new ConflictError("Day-0 mortality for this placement has already been recorded (write-once).");
+      throw new ConflictError("Kematian hari-0 untuk penempatan ini sudah dicatat (sekali tulis).");
     }
     const hidup = placement.populasiAwal - mati - afkir;
     if (hidup < 0) {
-      throw new ConflictError("MATI + AFKIR exceed the live-hen count.");
+      throw new ConflictError("MATI + AFKIR melebihi jumlah ayam hidup.");
     }
     return tx.hidupSnapshot.update({ where: { id: onDate.id }, data: { mati, afkir, hidup } });
   }
 
   // Normal day: append a fresh snapshot from the entering HIDUP.
   if (onDate) {
-    throw new ConflictError("A HIDUP snapshot for this placement-day already exists (write-once).");
+    throw new ConflictError("Snapshot HIDUP untuk hari penempatan ini sudah ada (sekali tulis).");
   }
   const hidup = entering.hidup - mati - afkir;
   if (hidup < 0) {
-    throw new ConflictError("MATI + AFKIR exceed the live-hen count.");
+    throw new ConflictError("MATI + AFKIR melebihi jumlah ayam hidup.");
   }
   return tx.hidupSnapshot.create({ data: { placementId, date: on, mati, afkir, hidup } });
 }

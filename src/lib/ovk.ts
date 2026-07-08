@@ -53,5 +53,5 @@ export const OVK_CATEGORY_ORDER: readonly OvkCategory[] = [
 export const OVK_CATEGORY_LABELS: Record<OvkCategory, string> = {
   OBAT: "Obat",
   VITAMIN: "Vitamin",
-  CHEMICAL: "Chemical",
+  CHEMICAL: "Kimia",
 };

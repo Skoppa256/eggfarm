@@ -34,18 +34,18 @@ const LOG_INCLUDE = {
 export async function createVaksinLog(input: VaksinLogInput, ctx: Ctx) {
   const date = toBusinessDate(input.date);
   if (!Number.isInteger(input.vials) || input.vials < 1) {
-    throw new ConflictError("Vials must be a whole number of at least 1.");
+    throw new ConflictError("Vial harus bilangan bulat minimal 1.");
   }
   const vaccinator = input.vaccinator.trim();
-  if (vaccinator.length === 0) throw new ConflictError("A vaccinator is required.");
+  if (vaccinator.length === 0) throw new ConflictError("Vaksinator wajib diisi.");
 
   const type = await prisma.vaksinType.findUnique({ where: { id: input.vaksinTypeId } });
-  if (!type) throw new NotFoundError("Vaksin type not found.");
+  if (!type) throw new NotFoundError("Tipe vaksin tidak ditemukan.");
   if (type.status !== RecordStatus.ACTIVE) {
-    throw new ConflictError(`Vaksin type "${type.name}" is not active.`);
+    throw new ConflictError(`Tipe vaksin "${type.name}" tidak aktif.`);
   }
   const farmhouse = await prisma.farmhouse.findUnique({ where: { id: input.farmhouseId } });
-  if (!farmhouse) throw new NotFoundError("Kandang not found.");
+  if (!farmhouse) throw new NotFoundError("Kandang tidak ditemukan.");
 
   return prisma.vaksinLog.create({
     data: {

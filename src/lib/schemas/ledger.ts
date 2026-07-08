@@ -8,14 +8,14 @@ import { SizeHealthGrade } from "@/generated/prisma/enums";
 
 export const movementEntrySchema = z
   .object({
-    warehouseId: z.string().min(1, "Warehouse is required."),
+    warehouseId: z.string().min(1, "Gudang wajib diisi."),
     sizeHealthGrade: z.enum(SizeHealthGrade),
-    typeGradeId: z.string().min(1, "Egg type is required."),
-    rak: z.coerce.number().int("Rak must be a whole number.").min(0, "Rak cannot be negative.").default(0),
-    pcs: z.coerce.number().int("Pcs must be a whole number.").min(0, "Pcs cannot be negative.").default(0),
+    typeGradeId: z.string().min(1, "Tipe Telur wajib diisi."),
+    rak: z.coerce.number().int("Rak harus bilangan bulat.").min(0, "Rak tidak boleh negatif.").default(0),
+    pcs: z.coerce.number().int("Pcs harus bilangan bulat.").min(0, "Pcs tidak boleh negatif.").default(0),
   })
   .refine((v) => v.rak + v.pcs > 0, {
-    message: "Enter a quantity greater than zero.",
+    message: "Masukkan jumlah lebih dari nol.",
     path: ["pcs"],
   });
 

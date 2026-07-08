@@ -14,11 +14,11 @@ export function WarehouseSelect({
   return (
     <form method="get" className="flex items-end gap-2">
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Warehouse
+        Gudang
         <select name="warehouseId" defaultValue={selectedId ?? ""} className={selectClass}>
           {warehouses.map((w) => (
             <option key={w.id} value={w.id}>
-              {w.name} ({w.code}){w.status !== "ACTIVE" ? " — inactive" : ""}
+              {w.name} ({w.code}){w.status !== "ACTIVE" ? " — nonaktif" : ""}
             </option>
           ))}
         </select>
@@ -27,7 +27,7 @@ export function WarehouseSelect({
         type="submit"
         className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
       >
-        Go
+        Buka
       </button>
     </form>
   );

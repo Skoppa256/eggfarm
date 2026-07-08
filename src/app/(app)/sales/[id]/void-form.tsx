@@ -15,7 +15,7 @@ export function VoidForm({ transactionId }: { transactionId: string }) {
     <form action={action} className="flex flex-col gap-2">
       <input type="hidden" name="transactionId" value={transactionId} />
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Void reason (required)
+        Alasan pembatalan (wajib)
         <input
           name="reason"
           required
@@ -29,7 +29,7 @@ export function VoidForm({ transactionId }: { transactionId: string }) {
           disabled={pending}
           className="rounded bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
         >
-          Void &amp; restore stock
+          Batalkan &amp; pulihkan stok
         </button>
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">

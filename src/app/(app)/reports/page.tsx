@@ -17,9 +17,9 @@ export default async function ReportsHubPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Laporan</h1>
         <p className="text-sm text-zinc-500">
-          Read-only standard reports (SRS §8.1). Each is filterable and exports to Excel.
+          Laporan standar (hanya-baca, SRS §8.1). Masing-masing dapat difilter dan diekspor ke Excel.
         </p>
       </header>
 
@@ -39,9 +39,9 @@ export default async function ReportsHubPage() {
             href="/mixing"
             className="rounded-lg border border-zinc-200 p-4 hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:border-zinc-600 dark:hover:bg-zinc-900"
           >
-            <div className="font-medium">Feed Mixing Pull-List</div>
+            <div className="font-medium">Pull-List Mixing Pakan</div>
             <div className="mt-0.5 text-xs text-zinc-500">
-              Printable per-kandang ingredient list — pick a kandang &amp; day in Mixing, then Pull-list.
+              Daftar bahan pakan per kandang yang dapat dicetak — pilih kandang &amp; hari di Mixing, lalu Pull-list.
             </div>
           </Link>
         )}

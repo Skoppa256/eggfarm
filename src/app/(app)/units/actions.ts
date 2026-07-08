@@ -27,12 +27,12 @@ export async function createUnitAction(
     sortOrder: formData.get("sortOrder") ?? 0,
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     const unit = await createMeasurementUnit(parsed.data);
     revalidatePath(PATH);
-    return { ok: true, message: `Created unit ${unit.name} (${unit.pcsEquivalent} pcs).` };
+    return { ok: true, message: `Satuan ${unit.name} (${unit.pcsEquivalent} pcs) dibuat.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -46,7 +46,7 @@ export async function setUnitStatusAction(formData: FormData): Promise<void> {
     status: formData.get("status"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   await setMeasurementUnitStatus(
     parsed.data.id,

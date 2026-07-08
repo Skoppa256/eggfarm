@@ -43,11 +43,11 @@ export default async function MixingPage({
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Feed mixing (PAKAN)</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Mixing Pakan (PAKAN)</h1>
         <p className="text-sm text-zinc-500">
-          Per kandang, per consumption day. Requirement = HIDUP × intake ÷ 1000; the fresh
-          mix nets yesterday&apos;s leftover. Confirming draws ingredients down and posts PAKAN
-          MASUK to the daily record.
+          Per kandang, per hari konsumsi. Kebutuhan = HIDUP × intake ÷ 1000; campuran segar
+          memperhitungkan sisa kemarin. Konfirmasi mengurangi bahan dan mencatat PAKAN
+          MASUK ke catatan harian.
         </p>
       </header>
 
@@ -58,7 +58,7 @@ export default async function MixingPage({
         <label className="flex flex-col gap-1 text-sm font-medium">
           Kandang
           <select name="farmhouseId" defaultValue={farmhouseId ?? ""} className={fieldClass}>
-            <option value="">Select…</option>
+            <option value="">Pilih…</option>
             {farmhouses.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name} ({f.code})
@@ -67,25 +67,25 @@ export default async function MixingPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Consumption day
+          Hari konsumsi
           <input type="date" name="date" defaultValue={dateStr} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Projected intake (g/bird)
+          Proyeksi intake (g/ekor)
           <input type="number" name="intake" min="0" step="0.001" defaultValue={sp.intake ?? ""} className={fieldClass} />
         </label>
         <button
           type="submit"
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Load
+          Muat
         </button>
       </form>
 
       {farmhouseId && intake ? (
         <MixEditor farmhouseId={farmhouseId} dateStr={dateStr} intake={intake} />
       ) : (
-        <p className="text-sm text-zinc-500">Choose a kandang, day and projected intake, then Load.</p>
+        <p className="text-sm text-zinc-500">Pilih kandang, hari, dan proyeksi intake, lalu Muat.</p>
       )}
     </main>
   );
@@ -111,7 +111,7 @@ async function MixEditor({
   if (!plan) {
     return (
       <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        No placement occupies this kandang on {dateStr}. Chick-in a flock first (Flocks).
+        Tidak ada penempatan yang menempati kandang ini pada {dateStr}. Lakukan chick-in Flock terlebih dahulu (Flocks).
       </p>
     );
   }
@@ -119,8 +119,8 @@ async function MixEditor({
   const planBlock = (
     <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-4">
       <Stat label="HIDUP" value={plan.hidup} />
-      <Stat label="Requirement (kg)" value={plan.requirement.toFixed(3)} />
-      <Stat label="Reusable leftover (kg)" value={plan.reusableLeftover.toFixed(3)} />
+      <Stat label="Kebutuhan (kg)" value={plan.requirement.toFixed(3)} />
+      <Stat label="Sisa dapat dipakai (kg)" value={plan.reusableLeftover.toFixed(3)} />
       <Stat label="TOTAL CAMPUR / MASUK (kg)" value={plan.totalCampur.toFixed(3)} />
     </div>
   );
@@ -129,7 +129,7 @@ async function MixEditor({
     return (
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Mixed for {dateStr}</h2>
+          <h2 className="text-lg font-semibold">Dicampur untuk {dateStr}</h2>
           <Link
             href={`/mixing/pull-list?farmhouseId=${farmhouseId}&date=${dateStr}`}
             className="rounded border border-zinc-300 px-3 py-1 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
@@ -138,22 +138,22 @@ async function MixEditor({
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-4">
-          <Stat label="HIDUP at mix" value={existing.hidupAtMix} />
-          <Stat label="Requirement (kg)" value={existing.requirement.toFixed(3)} />
-          <Stat label="Leftover (kg)" value={existing.reusableLeftover.toFixed(3)} />
+          <Stat label="HIDUP saat mix" value={existing.hidupAtMix} />
+          <Stat label="Kebutuhan (kg)" value={existing.requirement.toFixed(3)} />
+          <Stat label="Sisa (kg)" value={existing.reusableLeftover.toFixed(3)} />
           <Stat label="PAKAN MASUK (kg)" value={existing.totalCampur.toFixed(3)} />
         </div>
         <div className="text-sm">
           <span className="text-zinc-500">JENIS: </span>
-          <span className="font-medium">{existing.jenis || "— (no fresh mix)"}</span>
+          <span className="font-medium">{existing.jenis || "— (tidak ada campuran segar)"}</span>
         </div>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Ingredient</th>
-                <th className="px-4 py-2">Kind</th>
-                <th className="px-4 py-2 text-right">Weight (kg)</th>
+                <th className="px-4 py-2">Bahan</th>
+                <th className="px-4 py-2">Jenis</th>
+                <th className="px-4 py-2 text-right">Berat (kg)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -161,7 +161,7 @@ async function MixEditor({
                 <tr key={l.id}>
                   <td className="px-4 py-2 font-medium">{l.ingredient.name}</td>
                   <td className="px-4 py-2 text-zinc-500">
-                    {l.kind === "MAIN_PERCENT" ? `${l.percent?.toString() ?? "0"}% main` : "fixed"}
+                    {l.kind === "MAIN_PERCENT" ? `${l.percent?.toString() ?? "0"}% utama` : "tetap"}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{l.computedWeight.toFixed(3)}</td>
                 </tr>
@@ -184,18 +184,18 @@ async function MixEditor({
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold">Plan for {dateStr}</h2>
+      <h2 className="text-lg font-semibold">Rencana untuk {dateStr}</h2>
       {planBlock}
       {plan.totalCampur === 0 && (
         <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          No-mix day: yesterday&apos;s leftover already covers the requirement, so PAKAN MASUK is 0
-          and nothing is drawn. You can still confirm to log the recipe.
+          Hari tanpa mixing: sisa kemarin sudah menutupi kebutuhan, jadi PAKAN MASUK adalah 0
+          dan tidak ada yang dikurangi. Anda tetap bisa mengonfirmasi untuk mencatat resep.
         </p>
       )}
       <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <h3 className="mb-3 font-semibold">Recipe {prev ? "(pre-filled from the last mix)" : ""}</h3>
+        <h3 className="mb-3 font-semibold">Resep {prev ? "(terisi otomatis dari mix terakhir)" : ""}</h3>
         {ingredients.length === 0 ? (
-          <p className="text-sm text-zinc-500">Add feed ingredients first (Ingredients).</p>
+          <p className="text-sm text-zinc-500">Tambah Bahan Pakan terlebih dahulu (Bahan Pakan).</p>
         ) : (
           <MixingForm
             hiddenFields={[

@@ -19,12 +19,12 @@ export async function createBuyerAction(
   await requireRole(...OPERATORS);
   const parsed = createBuyerSchema.safeParse({ name: formData.get("name") });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     const buyer = await createBuyer(parsed.data);
     revalidatePath(PATH);
-    return { ok: true, message: `Added buyer ${buyer.name}.` };
+    return { ok: true, message: `Pembeli ${buyer.name} ditambahkan.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -38,7 +38,7 @@ export async function renameBuyerAction(formData: FormData): Promise<void> {
     name: formData.get("name"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   await renameBuyer(parsed.data.id, parsed.data.name);
   revalidatePath(PATH);
@@ -51,7 +51,7 @@ export async function setBuyerStatusAction(formData: FormData): Promise<void> {
     status: formData.get("status"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   await setBuyerStatus(
     parsed.data.id,

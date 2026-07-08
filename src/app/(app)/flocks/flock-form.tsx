@@ -32,25 +32,25 @@ export function FlockForm({
           <input name="strain" required className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Chick-in date
+          Tanggal Chick-in
           <input type="date" name="chickInDate" defaultValue={defaultDate} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Placement age (days at chick-in)
+          Umur penempatan (hari saat Chick-in)
           <input type="number" name="placementAge" min={0} defaultValue={0} required className={fieldClass} />
         </label>
       </div>
 
       <fieldset className="rounded border border-zinc-200 p-3 dark:border-zinc-800">
         <legend className="px-1 text-xs font-semibold text-zinc-500">
-          Placements (one row per kandang, each with its Populasi Awal)
+          Penempatan (satu baris per kandang, masing-masing dengan Populasi Awal-nya)
         </legend>
         <input type="hidden" name="placementCount" value={rows} readOnly />
         <div className="flex flex-col gap-2">
           {Array.from({ length: rows }, (_, i) => (
             <div key={i} className="flex items-center gap-2">
               <select name={`placement.${i}.farmhouseId`} defaultValue="" className={fieldClass}>
-                <option value="">— kandang —</option>
+                <option value="">— Kandang —</option>
                 {farmhouses.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.name} ({f.code})
@@ -73,7 +73,7 @@ export function FlockForm({
           onClick={() => setRows((r) => r + 1)}
           className="mt-2 rounded border border-zinc-300 px-3 py-1 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
         >
-          + Add kandang
+          + Tambah kandang
         </button>
       </fieldset>
 
@@ -83,9 +83,9 @@ export function FlockForm({
           disabled={pending || !canPlace}
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Record chick-in
+          Catat Chick-in
         </button>
-        {!canPlace && <span className="text-sm text-amber-600">No free kandang available.</span>}
+        {!canPlace && <span className="text-sm text-amber-600">Tidak ada kandang kosong yang tersedia.</span>}
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">
             {state.error}

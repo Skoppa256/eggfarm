@@ -31,7 +31,7 @@ export function EndPlacementForm({
         disabled={pending}
         className="rounded border border-rose-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950"
       >
-        End placement
+        Akhiri Penempatan
       </button>
       {state && !state.ok && (
         <span role="alert" className="text-xs font-medium text-rose-600">

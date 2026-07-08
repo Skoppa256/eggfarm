@@ -19,7 +19,7 @@ export const MAX_BATCHES_PER_DAY = 10;
 function assertBatchRange(n: number): void {
   if (!Number.isInteger(n) || n < MIN_BATCHES_PER_DAY || n > MAX_BATCHES_PER_DAY) {
     throw new ConflictError(
-      `Max batches per day must be an integer between ${MIN_BATCHES_PER_DAY} and ${MAX_BATCHES_PER_DAY}.`,
+      `Maksimal batch per hari harus bilangan bulat antara ${MIN_BATCHES_PER_DAY} dan ${MAX_BATCHES_PER_DAY}.`,
     );
   }
 }
@@ -28,7 +28,7 @@ async function assertWarehouseActive(warehouseId: string): Promise<void> {
   const warehouse = await prisma.warehouse.findUnique({ where: { id: warehouseId } });
   if (!warehouse || warehouse.status !== RecordStatus.ACTIVE) {
     // Deactivated warehouses are excluded from new mappings (SRS FR).
-    throw new ConflictError("Warehouse is not active.");
+    throw new ConflictError("Gudang tidak aktif.");
   }
 }
 
@@ -110,7 +110,7 @@ export async function createFarmhouse(input: {
 
   const existing = await prisma.farmhouse.findUnique({ where: { code: input.code } });
   if (existing) {
-    throw new ConflictError(`Farmhouse code "${input.code}" is already taken.`);
+    throw new ConflictError(`Kode kandang "${input.code}" sudah dipakai.`);
   }
 
   const effectiveFrom = toBusinessDate(input.today);
@@ -151,7 +151,7 @@ export async function changeWarehouseMapping(input: {
 }) {
   const farmhouse = await prisma.farmhouse.findUnique({ where: { id: input.farmhouseId } });
   if (!farmhouse) {
-    throw new NotFoundError("Farmhouse not found.");
+    throw new NotFoundError("Kandang tidak ditemukan.");
   }
   await assertWarehouseActive(input.warehouseId);
 
@@ -178,7 +178,7 @@ export async function changeMaxBatches(input: {
   assertBatchRange(input.maxBatchesPerDay);
   const farmhouse = await prisma.farmhouse.findUnique({ where: { id: input.farmhouseId } });
   if (!farmhouse) {
-    throw new NotFoundError("Farmhouse not found.");
+    throw new NotFoundError("Kandang tidak ditemukan.");
   }
 
   return prisma.farmhouseBatchSetting.create({
@@ -196,7 +196,7 @@ export async function changeMaxBatches(input: {
 export async function setFarmhouseStatus(farmhouseId: string, status: RecordStatus) {
   const farmhouse = await prisma.farmhouse.findUnique({ where: { id: farmhouseId } });
   if (!farmhouse) {
-    throw new NotFoundError("Farmhouse not found.");
+    throw new NotFoundError("Kandang tidak ditemukan.");
   }
   return prisma.farmhouse.update({ where: { id: farmhouseId }, data: { status } });
 }

@@ -17,7 +17,7 @@ export function listGradeTypes() {
 export async function createGradeType(input: { name: string; sortOrder?: number }) {
   const existing = await prisma.gradeType.findUnique({ where: { name: input.name } });
   if (existing) {
-    throw new ConflictError(`Grade type "${input.name}" already exists.`);
+    throw new ConflictError(`Jenis grade "${input.name}" sudah ada.`);
   }
   return prisma.gradeType.create({
     data: { name: input.name, sortOrder: input.sortOrder ?? 0 },
@@ -28,7 +28,7 @@ export async function createGradeType(input: { name: string; sortOrder?: number 
 export async function setGradeTypeStatus(id: string, status: RecordStatus) {
   const existing = await prisma.gradeType.findUnique({ where: { id } });
   if (!existing) {
-    throw new NotFoundError("Grade type not found.");
+    throw new NotFoundError("Jenis grade tidak ditemukan.");
   }
   return prisma.gradeType.update({ where: { id }, data: { status } });
 }

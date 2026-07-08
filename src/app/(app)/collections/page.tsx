@@ -52,10 +52,10 @@ export default async function CollectionsPage({
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Collection input</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Input Pengambilan</h1>
         <p className="text-sm text-zinc-500">
-          One entry per kandang, date and batch. Angkat Rak (entered in rak) posts to the
-          kandang&apos;s warehouse on save; the counts feed grading.
+          Satu entri per kandang, tanggal dan batch. Angkat Rak (dimasukkan dalam rak) diposting ke
+          Gudang kandang saat disimpan; jumlahnya menjadi masukan untuk Grading.
         </p>
       </header>
 
@@ -66,7 +66,7 @@ export default async function CollectionsPage({
         <label className="flex flex-col gap-1 text-sm font-medium">
           Kandang
           <select name="farmhouseId" defaultValue={farmhouseId ?? ""} className={fieldClass}>
-            <option value="">Select…</option>
+            <option value="">Pilih…</option>
             {farmhouses.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name} ({f.code})
@@ -75,14 +75,14 @@ export default async function CollectionsPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Business date
+          Tanggal
           <input type="date" name="date" defaultValue={dateStr} className={fieldClass} />
         </label>
         <button
           type="submit"
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Load
+          Muat
         </button>
       </form>
 
@@ -95,7 +95,7 @@ export default async function CollectionsPage({
           canOverrideLock={user.role === "SUPERADMIN"}
         />
       ) : (
-        <p className="text-sm text-zinc-500">Choose a kandang and date, then Load.</p>
+        <p className="text-sm text-zinc-500">Pilih kandang dan tanggal, lalu Muat.</p>
       )}
     </main>
   );
@@ -124,14 +124,14 @@ async function BatchSlots({
   if (!warehouseId) {
     return (
       <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        This kandang has no warehouse mapping for {dateStr}. Map it first under Farmhouses.
+        Kandang ini belum memiliki pemetaan Gudang untuk {dateStr}. Petakan dulu di menu Kandang.
       </p>
     );
   }
   if (maxBatches == null) {
     return (
       <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        This kandang has no batch configuration for {dateStr}.
+        Kandang ini belum memiliki konfigurasi batch untuk {dateStr}.
       </p>
     );
   }
@@ -141,9 +141,9 @@ async function BatchSlots({
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold">
-        Batches for {dateStr}{" "}
+        Batch untuk {dateStr}{" "}
         <span className="text-sm font-normal text-zinc-500">
-          (max {maxBatches} · Angkat Rak → {warehouseName.get(warehouseId) ?? "warehouse"})
+          (maks {maxBatches} · Angkat Rak → {warehouseName.get(warehouseId) ?? "Gudang"})
         </span>
       </h2>
       {Array.from({ length: maxBatches }, (_, i) => i + 1).map((batch) => {
@@ -168,7 +168,7 @@ async function BatchSlots({
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-semibold">Batch {batch}</h3>
               <span className="text-xs text-zinc-500">
-                {record ? `Recorded — ${formatPcs(total)} total` : "Not yet recorded"}
+                {record ? `Tercatat — total ${formatPcs(total)}` : "Belum tercatat"}
               </span>
             </div>
             <CollectionForm

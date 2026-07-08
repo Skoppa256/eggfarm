@@ -83,7 +83,7 @@ export function DailyForm({
           <input type="number" name="beratTelur" min={0} step="0.001" defaultValue={defaults.beratTelur} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          BERAT BADAN (opt.)
+          BERAT BADAN (opsional)
           <input type="number" name="beratBadan" min={0} step="0.01" defaultValue={defaults.beratBadan} className={fieldClass} />
         </label>
       </div>
@@ -92,11 +92,11 @@ export function DailyForm({
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-xs font-medium">
-          OBAT (note)
+          OBAT (catatan)
           <input name="obatNote" defaultValue={defaults.obatNote} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          VITAMIN (note)
+          VITAMIN (catatan)
           <input name="vitaminNote" defaultValue={defaults.vitaminNote} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
@@ -111,7 +111,7 @@ export function DailyForm({
           disabled={pending}
           className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          {mode === "create" ? "Save daily record" : "Update record"}
+          {mode === "create" ? "Simpan Catatan Harian" : "Perbarui Catatan"}
         </button>
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">

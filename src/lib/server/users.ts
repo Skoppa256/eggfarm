@@ -34,7 +34,7 @@ export async function createUser(input: {
 }) {
   const existing = await prisma.user.findUnique({ where: { username: input.username } });
   if (existing) {
-    throw new ConflictError(`Username "${input.username}" is already taken.`);
+    throw new ConflictError(`Nama pengguna "${input.username}" sudah dipakai.`);
   }
   const passwordHash = await hashPassword(input.password);
   return prisma.user.create({
@@ -55,7 +55,7 @@ export async function createUser(input: {
 export async function setUserStatus(userId: string, status: RecordStatus) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
-    throw new NotFoundError("User not found.");
+    throw new NotFoundError("Pengguna tidak ditemukan.");
   }
   if (status === RecordStatus.INACTIVE) {
     await prisma.session.deleteMany({ where: { userId } });

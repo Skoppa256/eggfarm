@@ -27,7 +27,7 @@ export async function setThreshold(input: {
   minQuantity: number;
 }) {
   if (!Number.isInteger(input.minQuantity) || input.minQuantity < 0) {
-    throw new ConflictError("Minimum must be a non-negative whole number (pcs).");
+    throw new ConflictError("Minimum harus bilangan bulat non-negatif (pcs).");
   }
   const identity = {
     warehouseId: input.warehouseId,

@@ -37,7 +37,7 @@ export async function createFarmhouseAction(
     maxBatchesPerDay: formData.get("maxBatchesPerDay"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     const farmhouse = await createFarmhouse({
@@ -46,7 +46,7 @@ export async function createFarmhouseAction(
       today: businessToday(),
     });
     revalidatePath(PATH);
-    return { ok: true, message: `Created farmhouse ${farmhouse.code}.` };
+    return { ok: true, message: `Kandang ${farmhouse.code} dibuat.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -60,7 +60,7 @@ export async function changeMappingAction(formData: FormData): Promise<void> {
     warehouseId: formData.get("warehouseId"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   // Mapping change is date-effective from today; history is retained.
   await changeWarehouseMapping({
@@ -79,7 +79,7 @@ export async function changeBatchAction(formData: FormData): Promise<void> {
     maxBatchesPerDay: formData.get("maxBatchesPerDay"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   // Per SRS FR-41 the new batch count takes effect the next day.
   await changeMaxBatches({
@@ -98,7 +98,7 @@ export async function setFarmhouseStatusAction(formData: FormData): Promise<void
     status: formData.get("status"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   await setFarmhouseStatus(
     parsed.data.id,

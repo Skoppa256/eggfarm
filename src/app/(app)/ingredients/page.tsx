@@ -34,17 +34,17 @@ export default async function IngredientsPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Feed ingredients (PAKAN)</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Bahan Pakan (PAKAN)</h1>
         <p className="text-sm text-zinc-500">
-          One central raw-ingredient store. Deliveries increase stock; mixing draws it down.
+          Satu gudang bahan mentah terpusat. Penerimaan menambah stok; mixing menguranginya.
         </p>
       </header>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Record a delivery</h2>
+        <h2 className="mb-3 text-lg font-semibold">Catat Penerimaan</h2>
         <div className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
           {active.length === 0 ? (
-            <p className="text-sm text-zinc-500">Add an ingredient below first.</p>
+            <p className="text-sm text-zinc-500">Tambah bahan di bawah terlebih dahulu.</p>
           ) : (
             <DeliveryForm ingredients={active} today={today} />
           )}
@@ -53,11 +53,11 @@ export default async function IngredientsPage() {
 
       {isSuperadmin && active.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Correct stock (Superadmin)</h2>
+          <h2 className="mb-3 text-lg font-semibold">Koreksi Stok (Superadmin)</h2>
           <div className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
             <p className="mb-3 text-xs text-zinc-500">
-              A supervised, immutable correction (a compensating movement with pre/post and a
-              reason). To fix a wrong correction, submit another.
+              Koreksi terawasi yang tidak dapat diubah (pergerakan kompensasi dengan nilai
+              sebelum/sesudah dan alasan). Untuk memperbaiki koreksi yang salah, kirim koreksi lagi.
             </p>
             <CorrectionForm ingredients={active} />
           </div>
@@ -65,23 +65,23 @@ export default async function IngredientsPage() {
       )}
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Central ingredient stock</h2>
+        <h2 className="mb-3 text-lg font-semibold">Stok Bahan Terpusat</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Ingredient</th>
-                <th className="px-4 py-2">Category</th>
-                <th className="px-4 py-2 text-right">On hand</th>
+                <th className="px-4 py-2">Bahan</th>
+                <th className="px-4 py-2">Kategori</th>
+                <th className="px-4 py-2 text-right">Tersedia</th>
                 <th className="px-4 py-2">Status</th>
-                {isSuperadmin && <th className="px-4 py-2 text-right">Action</th>}
+                {isSuperadmin && <th className="px-4 py-2 text-right">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {ingredients.length === 0 && (
                 <tr>
                   <td colSpan={isSuperadmin ? 5 : 4} className="px-4 py-3 text-zinc-500">
-                    No ingredients yet.
+                    Belum ada bahan.
                   </td>
                 </tr>
               )}
@@ -112,7 +112,7 @@ export default async function IngredientsPage() {
                           <input type="hidden" name="id" value={ing.id} />
                           <input type="hidden" name="status" value={active ? "INACTIVE" : "ACTIVE"} />
                           <button type="submit" className={btnClass}>
-                            {active ? "Deactivate" : "Reactivate"}
+                            {active ? "Nonaktifkan" : "Aktifkan"}
                           </button>
                         </form>
                       </td>
@@ -127,29 +127,29 @@ export default async function IngredientsPage() {
 
       {isSuperadmin && (
         <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-          <h2 className="mb-4 text-lg font-semibold">Add an ingredient (Superadmin)</h2>
+          <h2 className="mb-4 text-lg font-semibold">Tambah Bahan (Superadmin)</h2>
           <IngredientForm />
         </section>
       )}
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Recent stock movements</h2>
+        <h2 className="mb-3 text-lg font-semibold">Pergerakan Stok Terkini</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Date</th>
-                <th className="px-4 py-2">Ingredient</th>
-                <th className="px-4 py-2">Type</th>
-                <th className="px-4 py-2 text-right">Qty (kg)</th>
-                <th className="px-4 py-2 text-right">Balance</th>
+                <th className="px-4 py-2">Tanggal</th>
+                <th className="px-4 py-2">Bahan</th>
+                <th className="px-4 py-2">Tipe</th>
+                <th className="px-4 py-2 text-right">Jumlah (kg)</th>
+                <th className="px-4 py-2 text-right">Saldo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {movements.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-3 text-zinc-500">
-                    No movements yet.
+                    Belum ada pergerakan.
                   </td>
                 </tr>
               )}
@@ -159,10 +159,10 @@ export default async function IngredientsPage() {
                   <td className="px-4 py-2 font-medium">{m.ingredient.name}</td>
                   <td className="px-4 py-2 text-zinc-500">
                     {m.sourceType === "DELIVERY"
-                      ? "Delivery"
+                      ? "Penerimaan"
                       : m.sourceType === "MIXING"
                         ? "Mixing"
-                        : "Correction"}
+                        : "Koreksi"}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     {m.postQuantity.greaterThanOrEqualTo(m.preQuantity) ? "+" : "−"}

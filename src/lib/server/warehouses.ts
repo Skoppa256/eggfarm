@@ -14,7 +14,7 @@ export function listWarehouses() {
 export async function createWarehouse(input: { name: string; code: string }) {
   const existing = await prisma.warehouse.findUnique({ where: { code: input.code } });
   if (existing) {
-    throw new ConflictError(`Warehouse code "${input.code}" is already taken.`);
+    throw new ConflictError(`Kode gudang "${input.code}" sudah dipakai.`);
   }
   return prisma.warehouse.create({ data: { name: input.name, code: input.code } });
 }
@@ -22,7 +22,7 @@ export async function createWarehouse(input: { name: string; code: string }) {
 export async function renameWarehouse(id: string, name: string) {
   const existing = await prisma.warehouse.findUnique({ where: { id } });
   if (!existing) {
-    throw new NotFoundError("Warehouse not found.");
+    throw new NotFoundError("Gudang tidak ditemukan.");
   }
   return prisma.warehouse.update({ where: { id }, data: { name } });
 }
@@ -31,7 +31,7 @@ export async function renameWarehouse(id: string, name: string) {
 export async function setWarehouseStatus(id: string, status: RecordStatus) {
   const existing = await prisma.warehouse.findUnique({ where: { id } });
   if (!existing) {
-    throw new NotFoundError("Warehouse not found.");
+    throw new NotFoundError("Gudang tidak ditemukan.");
   }
   return prisma.warehouse.update({ where: { id }, data: { status } });
 }

@@ -36,8 +36,8 @@ export default async function PemakaianPage({
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 sm:p-8">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">OVK usage (Pemakaian)</h1>
-          <p className="text-sm text-zinc-500">Office→kandang transfers per kandang over a date range.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Pemakaian OVK (Pemakaian)</h1>
+          <p className="text-sm text-zinc-500">Transfer office→kandang per kandang dalam rentang tanggal.</p>
         </div>
         <Link href="/ovk" className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200">
           ← OVK
@@ -48,7 +48,7 @@ export default async function PemakaianPage({
         <label className="flex flex-col gap-1 text-sm font-medium">
           Kandang
           <select name="farmhouseId" defaultValue={farmhouseId ?? ""} className={fieldClass}>
-            <option value="">Select…</option>
+            <option value="">Pilih…</option>
             {farmhouses.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name} ({f.code})
@@ -57,41 +57,41 @@ export default async function PemakaianPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          From
+          Dari
           <input type="date" name="from" defaultValue={sp.from ?? ""} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          To
+          Sampai
           <input type="date" name="to" defaultValue={sp.to ?? ""} className={fieldClass} />
         </label>
         <button
           type="submit"
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Load
+          Muat
         </button>
       </form>
 
       {!farmhouseId ? (
-        <p className="text-sm text-zinc-500">Choose a kandang, then Load.</p>
+        <p className="text-sm text-zinc-500">Pilih kandang, lalu Muat.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Date</th>
+                <th className="px-4 py-2">Tanggal</th>
                 <th className="px-4 py-2">Item</th>
-                <th className="px-4 py-2">Category</th>
-                <th className="px-4 py-2 text-right">Qty out</th>
-                <th className="px-4 py-2">Unit</th>
-                <th className="px-4 py-2">Note</th>
+                <th className="px-4 py-2">Kategori</th>
+                <th className="px-4 py-2 text-right">Jumlah keluar</th>
+                <th className="px-4 py-2">Satuan</th>
+                <th className="px-4 py-2">Catatan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-3 text-zinc-500">
-                    No transfers to this kandang in the range.
+                    Tidak ada transfer ke kandang ini dalam rentang tersebut.
                   </td>
                 </tr>
               )}

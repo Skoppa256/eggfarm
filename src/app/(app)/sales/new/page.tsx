@@ -28,11 +28,11 @@ export default async function NewSalePage() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-6 sm:p-8">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">New sale</h1>
-          <p className="text-sm text-zinc-500">Deducts stock atomically on submit.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Penjualan Baru</h1>
+          <p className="text-sm text-zinc-500">Mengurangi stok secara atomik saat dikirim.</p>
         </div>
         <Link href="/sales" className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200">
-          ← All sales
+          ← Semua Penjualan
         </Link>
       </header>
 

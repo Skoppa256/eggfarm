@@ -46,14 +46,14 @@ interface Ctx {
 
 function assertCounts(input: CollectionCounts): void {
   const fields: [string, number][] = [
-    ["Good eggs", input.goodEggs],
+    ["Telur bagus", input.goodEggs],
     ["Telur retak", input.telurRetak],
     ["Telur lunak", input.telurLunak],
     ["Telur kosong", input.telurKosong],
   ];
   for (const [label, value] of fields) {
     if (!Number.isInteger(value) || value < 0) {
-      throw new ConflictError(`${label} must be a non-negative whole number (pcs).`);
+      throw new ConflictError(`${label} harus bilangan bulat non-negatif (pcs).`);
     }
   }
 }
@@ -64,11 +64,11 @@ function normalizeLifts(lifts: AngkatRakLiftInput[]): AngkatRakLiftInput[] {
   const out: AngkatRakLiftInput[] = [];
   for (const lift of lifts) {
     if (!Number.isInteger(lift.quantity) || lift.quantity < 0) {
-      throw new ConflictError("Angkat Rak quantity must be a non-negative whole number.");
+      throw new ConflictError("Jumlah Angkat Rak harus bilangan bulat non-negatif.");
     }
     if (lift.quantity === 0) continue;
     if (seen.has(lift.typeGradeId)) {
-      throw new ConflictError("Duplicate Angkat Rak Type in one batch.");
+      throw new ConflictError("Tipe Angkat Rak duplikat dalam satu batch.");
     }
     seen.add(lift.typeGradeId);
     out.push(lift);
@@ -107,14 +107,14 @@ export async function createCollection(key: CollectionKey, input: CollectionCoun
 
   const warehouseId = await resolveWarehouseId(key.farmhouseId, date);
   if (!warehouseId) {
-    throw new ConflictError("This kandang has no warehouse mapping for that date.");
+    throw new ConflictError("Kandang ini belum punya pemetaan gudang untuk tanggal itu.");
   }
   const maxBatches = await resolveMaxBatches(key.farmhouseId, date);
   if (maxBatches == null) {
-    throw new ConflictError("This kandang has no batch configuration for that date.");
+    throw new ConflictError("Kandang ini belum punya konfigurasi batch untuk tanggal itu.");
   }
   if (!Number.isInteger(key.batchNumber) || key.batchNumber < 1 || key.batchNumber > maxBatches) {
-    throw new ConflictError(`Batch number must be between 1 and ${maxBatches}.`);
+    throw new ConflictError(`Nomor batch harus antara 1 dan ${maxBatches}.`);
   }
 
   const existing = await prisma.collectionRecord.findUnique({
@@ -125,7 +125,7 @@ export async function createCollection(key: CollectionKey, input: CollectionCoun
   });
   if (existing) {
     throw new ConflictError(
-      "A collection for this kandang, date and batch already exists — open it to edit.",
+      "Pengambilan untuk kandang, tanggal, dan batch ini sudah ada — buka untuk mengubahnya.",
     );
   }
 
@@ -196,13 +196,13 @@ export async function updateCollection(
     include: { angkatRakLifts: true },
   });
   if (!existing) {
-    throw new NotFoundError("Collection not found.");
+    throw new NotFoundError("Pengambilan tidak ditemukan.");
   }
 
   const date = existing.date; // key is immutable on edit
   const warehouseId = await resolveWarehouseId(existing.farmhouseId, date);
   if (!warehouseId) {
-    throw new ConflictError("This kandang has no warehouse mapping for that date.");
+    throw new ConflictError("Kandang ini belum punya pemetaan gudang untuk tanggal itu.");
   }
 
   assertCounts(input);
@@ -229,7 +229,7 @@ export async function updateCollection(
   if (submittedGrading) {
     if (!opts?.allowGradedEdit) {
       throw new ConflictError(
-        "This batch is already graded — its collection is locked. A Superadmin can override to correct it.",
+        "Batch ini sudah di-grading — pengambilannya terkunci. Superadmin bisa menimpa untuk mengoreksinya.",
       );
     }
     const newAngkatRak = [...desired.values()].reduce((s, q) => s + q, 0);
@@ -237,7 +237,7 @@ export async function updateCollection(
     const gradedTotal = submittedGrading.lineItems.reduce((s, li) => s + li.quantity, 0);
     if (gradedTotal > newAvailable) {
       throw new ConflictError(
-        `This edit would leave grading over-allocated: graded ${gradedTotal} pcs > available ${newAvailable} pcs. Adjust grading first.`,
+        `Perubahan ini akan membuat grading kelebihan alokasi: ter-grading ${gradedTotal} pcs > tersedia ${newAvailable} pcs. Sesuaikan grading dulu.`,
       );
     }
     auditReason = "Collection edited after grading (Superadmin override).";

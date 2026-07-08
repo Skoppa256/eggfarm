@@ -34,7 +34,7 @@ export class InsufficientStockError extends AppError {
     readonly requested: number,
   ) {
     super(
-      `Insufficient stock for ${sku}: have ${available} pcs, need ${requested} pcs.`,
+      `Stok tidak cukup untuk ${sku}: tersedia ${available} pcs, dibutuhkan ${requested} pcs.`,
     );
   }
 }
@@ -51,7 +51,7 @@ export class InsufficientIngredientError extends AppError {
     readonly requested: string,
   ) {
     super(
-      `Insufficient ${ingredient}: have ${available} kg, need ${requested} kg.`,
+      `${ingredient} tidak cukup: tersedia ${available} kg, dibutuhkan ${requested} kg.`,
     );
   }
 }
@@ -69,7 +69,7 @@ export class InsufficientOvkError extends AppError {
     readonly unit: string,
   ) {
     super(
-      `Insufficient ${item}: have ${available} ${unit}, need ${requested} ${unit}.`,
+      `${item} tidak cukup: tersedia ${available} ${unit}, dibutuhkan ${requested} ${unit}.`,
     );
   }
 }

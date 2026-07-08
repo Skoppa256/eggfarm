@@ -13,11 +13,11 @@ export function LoginForm() {
   return (
     <form action={action} className="flex w-full flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Username
+        Nama pengguna
         <input name="username" autoComplete="username" required className={fieldClass} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Password
+        Kata Sandi
         <input
           type="password"
           name="password"
@@ -38,7 +38,7 @@ export function LoginForm() {
         disabled={pending}
         className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
       >
-        {pending ? "Signing in…" : "Sign in"}
+        {pending ? "Masuk…" : "Masuk"}
       </button>
     </form>
   );

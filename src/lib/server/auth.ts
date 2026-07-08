@@ -48,11 +48,11 @@ export async function authenticate(username: string, password: string): Promise<
   // Same error whether the user is missing, inactive, or the password is wrong —
   // don't leak which usernames exist.
   if (!user || user.status !== RecordStatus.ACTIVE) {
-    throw new UnauthorizedError("Invalid username or password.");
+    throw new UnauthorizedError("Username atau password salah.");
   }
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
-    throw new UnauthorizedError("Invalid username or password.");
+    throw new UnauthorizedError("Username atau password salah.");
   }
   return { id: user.id, name: user.name, username: user.username, role: user.role };
 }
@@ -129,7 +129,7 @@ export async function destroySession(): Promise<void> {
 export async function requireUser(): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user) {
-    throw new UnauthorizedError("Not authenticated.");
+    throw new UnauthorizedError("Tidak terautentikasi.");
   }
   return user;
 }
@@ -141,7 +141,7 @@ export async function requireUser(): Promise<SessionUser> {
  */
 export function assertRole(user: { role: Role }, allowedRoles: Role[]): void {
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    throw new ForbiddenError(`Role ${user.role} is not permitted to perform this action.`);
+    throw new ForbiddenError(`Role ${user.role} tidak diizinkan melakukan aksi ini.`);
   }
 }
 

@@ -25,12 +25,12 @@ export async function createVaksinTypeAction(
     sortOrder: formData.get("sortOrder") ?? undefined,
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await createVaksinType(parsed.data);
     revalidatePath(PATH);
-    return { ok: true, message: `Vaksin type "${parsed.data.name}" added.` };
+    return { ok: true, message: `Tipe vaksin "${parsed.data.name}" ditambahkan.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -43,7 +43,7 @@ export async function setVaksinTypeStatusAction(formData: FormData): Promise<voi
     id: formData.get("id"),
     status: formData.get("status"),
   });
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   await setVaksinTypeStatus(parsed.data.id, parsed.data.status as RecordStatus);
   revalidatePath(PATH);
 }
@@ -63,7 +63,7 @@ export async function createVaksinLogAction(
     vaccinator: formData.get("vaccinator"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await createVaksinLog(
@@ -78,7 +78,7 @@ export async function createVaksinLogAction(
     );
     revalidatePath(PATH);
     revalidatePath("/daily");
-    return { ok: true, message: "Vaccination logged." };
+    return { ok: true, message: "Vaksinasi dicatat." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

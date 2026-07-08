@@ -23,14 +23,14 @@ export function listActiveVaksinTypes() {
 
 export async function createVaksinType(input: { name: string; sortOrder?: number }) {
   const name = input.name.trim();
-  if (name.length === 0) throw new ConflictError("Vaksin type name is required.");
+  if (name.length === 0) throw new ConflictError("Nama tipe vaksin wajib diisi.");
   const existing = await prisma.vaksinType.findUnique({ where: { name } });
-  if (existing) throw new ConflictError(`Vaksin type "${name}" already exists.`);
+  if (existing) throw new ConflictError(`Tipe vaksin "${name}" sudah ada.`);
   return prisma.vaksinType.create({ data: { name, sortOrder: input.sortOrder ?? 0 } });
 }
 
 export async function setVaksinTypeStatus(id: string, status: RecordStatus) {
   const existing = await prisma.vaksinType.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError("Vaksin type not found.");
+  if (!existing) throw new NotFoundError("Tipe vaksin tidak ditemukan.");
   return prisma.vaksinType.update({ where: { id }, data: { status } });
 }

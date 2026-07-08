@@ -32,12 +32,12 @@ export async function createIngredientAction(
     sortOrder: formData.get("sortOrder") ?? undefined,
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await createIngredient(parsed.data);
     revalidatePath(PATH);
-    return { ok: true, message: `Ingredient "${parsed.data.name}" added.` };
+    return { ok: true, message: `Bahan "${parsed.data.name}" ditambahkan.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -52,7 +52,7 @@ export async function setIngredientStatusAction(formData: FormData): Promise<voi
     status: formData.get("status"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   await setIngredientStatus(parsed.data.id, parsed.data.status as RecordStatus);
   revalidatePath(PATH);
@@ -71,7 +71,7 @@ export async function deliverIngredientAction(
     date: formData.get("date"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await recordDelivery({
@@ -81,7 +81,7 @@ export async function deliverIngredientAction(
       date: new Date(`${parsed.data.date}T00:00:00Z`),
     });
     revalidatePath(PATH);
-    return { ok: true, message: "Delivery recorded — ingredient stock increased." };
+    return { ok: true, message: "Penerimaan dicatat — stok bahan bertambah." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -101,7 +101,7 @@ export async function correctIngredientAction(
     reason: formData.get("reason"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await recordIngredientCorrection({
@@ -111,7 +111,7 @@ export async function correctIngredientAction(
       enteredById: user.id,
     });
     revalidatePath(PATH);
-    return { ok: true, message: "Ingredient stock corrected." };
+    return { ok: true, message: "Stok bahan dikoreksi." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

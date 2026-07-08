@@ -15,17 +15,17 @@ export function WarehouseTabs({
 }) {
   const q = warehouseId ? `?warehouseId=${warehouseId}` : "";
   const tabs: { key: TabKey; href: string; label: string }[] = [
-    { key: "stock", href: `/warehouse${q}`, label: "Stock" },
-    { key: "ledger", href: `/warehouse/ledger${q}`, label: "Ledger" },
+    { key: "stock", href: `/warehouse${q}`, label: "Stok" },
+    { key: "ledger", href: `/warehouse/ledger${q}`, label: "Mutasi" },
   ];
   if (role === "SUPERADMIN") {
-    tabs.push({ key: "correction", href: `/warehouse/correction${q}`, label: "Correction" });
+    tabs.push({ key: "correction", href: `/warehouse/correction${q}`, label: "Koreksi" });
   }
   if (role === "ADMIN" || role === "SUPERADMIN") {
-    tabs.push({ key: "thresholds", href: `/warehouse/thresholds${q}`, label: "Thresholds" });
+    tabs.push({ key: "thresholds", href: `/warehouse/thresholds${q}`, label: "Batas Minimum" });
   }
   if (role === "SUPERADMIN") {
-    tabs.push({ key: "audit", href: `/warehouse/audit${q}`, label: "Correction audit" });
+    tabs.push({ key: "audit", href: `/warehouse/audit${q}`, label: "Audit Koreksi" });
   }
 
   return (

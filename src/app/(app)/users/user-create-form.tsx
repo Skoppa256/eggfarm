@@ -11,7 +11,7 @@ const fieldClass =
 const ROLE_LABELS: Record<Role, string> = {
   SUPERADMIN: "Superadmin",
   ADMIN: "Admin",
-  OWNER: "Owner (read-only)",
+  OWNER: "Owner (hanya-baca)",
 };
 
 export function UserCreateForm() {
@@ -24,15 +24,15 @@ export function UserCreateForm() {
     <form action={action} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Name
+          Nama
           <input name="name" required className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Username
+          Nama pengguna
           <input name="username" autoComplete="off" required className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Password
+          Kata Sandi
           <input
             type="password"
             name="password"
@@ -42,7 +42,7 @@ export function UserCreateForm() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Role
+          Peran
           <select name="role" defaultValue={Role.ADMIN} className={fieldClass}>
             {Object.values(Role).map((r) => (
               <option key={r} value={r}>
@@ -59,7 +59,7 @@ export function UserCreateForm() {
           disabled={pending}
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Create user
+          Tambah Pengguna
         </button>
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">

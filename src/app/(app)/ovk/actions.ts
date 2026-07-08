@@ -50,12 +50,12 @@ export async function createOvkItemAction(
     sortOrder: formData.get("sortOrder") ?? undefined,
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await createOvkItem({ ...parsed.data, conversions: readConversions(formData) });
     revalidatePath(PATH);
-    return { ok: true, message: `Item "${parsed.data.name}" added.` };
+    return { ok: true, message: `Item "${parsed.data.name}" ditambahkan.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -65,7 +65,7 @@ export async function createOvkItemAction(
 export async function setOvkItemStatusAction(formData: FormData): Promise<void> {
   await requireRole("SUPERADMIN");
   const parsed = ovkStatusSchema.safeParse({ id: formData.get("id"), status: formData.get("status") });
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   await setOvkItemStatus(parsed.data.id, parsed.data.status as RecordStatus);
   revalidatePath(PATH);
 }
@@ -82,7 +82,7 @@ export async function deliverOvkAction(
     date: formData.get("date"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await recordOvkDelivery({
@@ -93,7 +93,7 @@ export async function deliverOvkAction(
       date: new Date(`${parsed.data.date}T00:00:00Z`),
     });
     revalidatePath(PATH);
-    return { ok: true, message: "Delivery recorded — office stock increased." };
+    return { ok: true, message: "Penerimaan dicatat — stok kantor bertambah." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -114,7 +114,7 @@ export async function transferOvkAction(
     date: formData.get("date"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await recordOvkTransfer({
@@ -128,7 +128,7 @@ export async function transferOvkAction(
     });
     revalidatePath(PATH);
     revalidatePath("/ovk/pemakaian");
-    return { ok: true, message: "Transfer recorded — office stock reduced." };
+    return { ok: true, message: "Transfer dicatat — stok kantor berkurang." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -146,7 +146,7 @@ export async function correctOvkAction(
     reason: formData.get("reason"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await recordOvkCorrection({
@@ -156,7 +156,7 @@ export async function correctOvkAction(
       enteredById: user.id,
     });
     revalidatePath(PATH);
-    return { ok: true, message: "Office stock corrected." };
+    return { ok: true, message: "Stok kantor dikoreksi." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

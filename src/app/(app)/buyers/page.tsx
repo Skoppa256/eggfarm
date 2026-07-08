@@ -23,33 +23,33 @@ export default async function BuyersPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Buyers</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Pembeli</h1>
         <p className="text-sm text-zinc-500">
-          Deactivated buyers stay in history but can&apos;t be used for new sales.
+          Pembeli yang dinonaktifkan tetap ada di riwayat tetapi tidak dapat digunakan untuk Penjualan baru.
         </p>
       </header>
 
       <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">Add a buyer</h2>
+        <h2 className="mb-4 text-lg font-semibold">Tambah Pembeli</h2>
         <BuyerCreateForm />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">All buyers</h2>
+        <h2 className="mb-3 text-lg font-semibold">Semua Pembeli</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Nama</th>
                 <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2 text-right">Actions</th>
+                <th className="px-4 py-2 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {buyers.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-4 py-4 text-zinc-500">
-                    No buyers yet.
+                    Belum ada Pembeli.
                   </td>
                 </tr>
               )}
@@ -62,7 +62,7 @@ export default async function BuyersPage() {
                         <input type="hidden" name="id" value={b.id} />
                         <input name="name" defaultValue={b.name} className={inputClass} />
                         <button type="submit" className={btnClass}>
-                          Save
+                          Simpan
                         </button>
                       </form>
                     </td>
@@ -82,7 +82,7 @@ export default async function BuyersPage() {
                         <input type="hidden" name="id" value={b.id} />
                         <input type="hidden" name="status" value={active ? "INACTIVE" : "ACTIVE"} />
                         <button type="submit" className={btnClass}>
-                          {active ? "Deactivate" : "Reactivate"}
+                          {active ? "Nonaktifkan" : "Aktifkan"}
                         </button>
                       </form>
                     </td>

@@ -21,32 +21,32 @@ export default async function WarehousesPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Warehouses</h1>
-        <p className="text-sm text-zinc-500">Operational structure — Superadmin managed.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Data Gudang</h1>
+        <p className="text-sm text-zinc-500">Struktur operasional — dikelola Superadmin.</p>
       </header>
 
       <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">Add a warehouse</h2>
+        <h2 className="mb-4 text-lg font-semibold">Tambah Gudang</h2>
         <WarehouseCreateForm />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">All warehouses</h2>
+        <h2 className="mb-3 text-lg font-semibold">Semua Gudang</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Code</th>
-                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Kode</th>
+                <th className="px-4 py-2">Nama</th>
                 <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2 text-right">Action</th>
+                <th className="px-4 py-2 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {warehouses.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-4 text-zinc-500">
-                    No warehouses yet.
+                    Belum ada Gudang.
                   </td>
                 </tr>
               )}
@@ -72,7 +72,7 @@ export default async function WarehousesPage() {
                         <input type="hidden" name="id" value={w.id} />
                         <input type="hidden" name="status" value={active ? "INACTIVE" : "ACTIVE"} />
                         <button type="submit" className={btnClass}>
-                          {active ? "Deactivate" : "Reactivate"}
+                          {active ? "Nonaktifkan" : "Aktifkan"}
                         </button>
                       </form>
                     </td>

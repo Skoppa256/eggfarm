@@ -27,8 +27,8 @@ export default async function WarehouseStockPage({
   if (warehouses.length === 0) {
     return (
       <main className="mx-auto w-full max-w-5xl p-8">
-        <h1 className="text-xl font-semibold">No warehouses</h1>
-        <p className="mt-2 text-sm text-zinc-500">Create one under Warehouses first.</p>
+        <h1 className="text-xl font-semibold">Belum ada Gudang</h1>
+        <p className="mt-2 text-sm text-zinc-500">Buat dulu di menu Data Gudang.</p>
       </main>
     );
   }
@@ -57,8 +57,8 @@ export default async function WarehouseStockPage({
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Warehouse</h1>
-        <p className="text-sm text-zinc-500">Current stock per Egg SKU, in rak + pcs.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Gudang</h1>
+        <p className="text-sm text-zinc-500">Stok saat ini per SKU Telur, dalam rak + pcs.</p>
       </header>
 
       <WarehouseTabs active="stock" warehouseId={selectedId} role={user.role} />
@@ -66,12 +66,12 @@ export default async function WarehouseStockPage({
 
       {lowCount > 0 && (
         <p className="rounded border border-rose-300 bg-rose-50 p-3 text-sm font-medium text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200">
-          {lowCount} SKU{lowCount > 1 ? "s" : ""} below the low-stock threshold.
+          {lowCount} SKU di bawah Batas Minimum stok.
         </p>
       )}
 
       {rows.length === 0 ? (
-        <p className="text-sm text-zinc-500">No stock in this warehouse yet.</p>
+        <p className="text-sm text-zinc-500">Belum ada stok di Gudang ini.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">

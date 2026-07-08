@@ -36,26 +36,26 @@ export default async function CorrectionAuditPage({
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Correction audit</h1>
-        <p className="text-sm text-zinc-500">All stock corrections, immutable — Superadmin only.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Audit Koreksi</h1>
+        <p className="text-sm text-zinc-500">Semua Koreksi Stok, permanen — hanya Superadmin.</p>
       </header>
 
       <WarehouseTabs active="audit" warehouseId={sp.warehouseId} role={user.role} />
 
       {corrections.length === 0 ? (
-        <p className="text-sm text-zinc-500">No corrections recorded.</p>
+        <p className="text-sm text-zinc-500">Belum ada Koreksi tercatat.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">When</th>
-                <th className="px-4 py-2">Warehouse</th>
-                <th className="px-4 py-2">Grade / Type</th>
+                <th className="px-4 py-2">Waktu</th>
+                <th className="px-4 py-2">Gudang</th>
+                <th className="px-4 py-2">Grade / Tipe</th>
                 <th className="px-4 py-2 text-right">Pre → Post</th>
                 <th className="px-4 py-2 text-right">Delta</th>
-                <th className="px-4 py-2">Reason</th>
-                <th className="px-4 py-2">By</th>
+                <th className="px-4 py-2">Alasan</th>
+                <th className="px-4 py-2">Oleh</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">

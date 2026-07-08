@@ -94,7 +94,7 @@ export async function freezeDailyFeedBlockTx(
 
 function assertInput(input: DailyInput): void {
   if (!Number.isInteger(input.mati) || input.mati < 0 || !Number.isInteger(input.afkir) || input.afkir < 0) {
-    throw new ConflictError("MATI and AFKIR must be non-negative whole numbers.");
+    throw new ConflictError("MATI dan AFKIR harus bilangan bulat non-negatif.");
   }
   const kg: [string, number][] = [
     ["SISA DIGUNAKAN", input.sisaDigunakan],
@@ -103,11 +103,11 @@ function assertInput(input: DailyInput): void {
   ];
   for (const [label, value] of kg) {
     if (!Number.isFinite(value) || value < 0) {
-      throw new ConflictError(`${label} must be a non-negative number (kg).`);
+      throw new ConflictError(`${label} harus angka non-negatif (kg).`);
     }
   }
   if (input.beratBadan != null && (!Number.isFinite(input.beratBadan) || input.beratBadan < 0)) {
-    throw new ConflictError("BERAT BADAN must be a non-negative number.");
+    throw new ConflictError("BERAT BADAN harus angka non-negatif.");
   }
 }
 
@@ -214,12 +214,12 @@ export async function createDailyRecord(key: DailyKey, input: DailyInput, ctx: C
       where: { farmhouseId_date: { farmhouseId: key.farmhouseId, date } },
     });
     if (dup) {
-      throw new ConflictError("A daily record for this kandang and date already exists — edit it.");
+      throw new ConflictError("Catatan harian untuk kandang dan tanggal ini sudah ada — ubah saja.");
     }
 
     const placement = await resolvePlacementForDateTx(tx, key.farmhouseId, date);
     if (!placement) {
-      throw new ConflictError("No placement occupies this kandang on that date — chick-in a flock first.");
+      throw new ConflictError("Belum ada penempatan di kandang ini pada tanggal itu — lakukan chick-in flock dulu.");
     }
 
     // MATI/AFKIR drive the day's running HIDUP through the write-once snapshot ledger.
@@ -278,12 +278,12 @@ export async function updateDailyRecord(recordId: string, input: DailyInput, ctx
   void ctx;
   const existing = await prisma.dailyRecord.findUnique({ where: { id: recordId } });
   if (!existing) {
-    throw new NotFoundError("Daily record not found.");
+    throw new NotFoundError("Catatan harian tidak ditemukan.");
   }
   assertInput(input);
   if (input.mati !== existing.mati || input.afkir !== existing.afkir) {
     throw new ConflictError(
-      "MATI/AFKIR are frozen once recorded — correcting them needs a supervised correction (not available yet).",
+      "MATI/AFKIR dibekukan setelah dicatat — untuk mengoreksinya butuh koreksi terawasi (belum tersedia).",
     );
   }
 

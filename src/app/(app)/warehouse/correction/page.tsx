@@ -27,7 +27,7 @@ export default async function CorrectionPage({
   if (warehouses.length === 0) {
     return (
       <main className="mx-auto w-full max-w-5xl p-8">
-        <h1 className="text-xl font-semibold">No warehouses</h1>
+        <h1 className="text-xl font-semibold">Belum ada Gudang</h1>
       </main>
     );
   }
@@ -38,9 +38,9 @@ export default async function CorrectionPage({
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Stock correction</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Koreksi Stok</h1>
         <p className="text-sm text-zinc-500">
-          Supervised adjustment to reconcile a physical count. Logged immutably with a reason.
+          Penyesuaian terawasi untuk mencocokkan hitungan fisik. Dicatat permanen dengan alasan.
         </p>
       </header>
 
@@ -48,14 +48,14 @@ export default async function CorrectionPage({
       <WarehouseSelect warehouses={warehouses} selectedId={selectedId} />
 
       <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">New correction</h2>
+        <h2 className="mb-4 text-lg font-semibold">Koreksi baru</h2>
         <CorrectionForm warehouseId={selectedId} gradeTypes={gradeTypes} />
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-zinc-500">Current stock (reference)</h2>
+        <h2 className="mb-2 text-sm font-semibold text-zinc-500">Stok saat ini (referensi)</h2>
         {nonZero.length === 0 ? (
-          <p className="text-sm text-zinc-500">No stock.</p>
+          <p className="text-sm text-zinc-500">Belum ada stok.</p>
         ) : (
           <ul className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
             {nonZero.map((s) => (

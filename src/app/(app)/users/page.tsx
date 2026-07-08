@@ -28,27 +28,27 @@ export default async function UsersPage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-        <p className="text-sm text-zinc-500">Superadmin manages all accounts.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Pengguna</h1>
+        <p className="text-sm text-zinc-500">Superadmin mengelola semua akun.</p>
       </header>
 
       <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">Add a user</h2>
+        <h2 className="mb-4 text-lg font-semibold">Tambah Pengguna</h2>
         <UserCreateForm />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">All users</h2>
+        <h2 className="mb-3 text-lg font-semibold">Semua Pengguna</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Username</th>
-                <th className="px-4 py-2">Role</th>
+                <th className="px-4 py-2">Nama</th>
+                <th className="px-4 py-2">Nama pengguna</th>
+                <th className="px-4 py-2">Peran</th>
                 <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Last login</th>
-                <th className="px-4 py-2 text-right">Action</th>
+                <th className="px-4 py-2">Login terakhir</th>
+                <th className="px-4 py-2 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -74,7 +74,7 @@ export default async function UsersPage() {
                     <td className="px-4 py-2 text-zinc-500">{formatDate(u.lastLoginAt)}</td>
                     <td className="px-4 py-2 text-right">
                       {isSelf ? (
-                        <span className="text-xs text-zinc-400">(you)</span>
+                        <span className="text-xs text-zinc-400">(Anda)</span>
                       ) : (
                         <form action={setUserStatusAction} className="inline">
                           <input type="hidden" name="userId" value={u.id} />
@@ -87,7 +87,7 @@ export default async function UsersPage() {
                             type="submit"
                             className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
                           >
-                            {active ? "Deactivate" : "Reactivate"}
+                            {active ? "Nonaktifkan" : "Aktifkan"}
                           </button>
                         </form>
                       )}

@@ -14,7 +14,7 @@ export function BuyerCreateForm() {
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Buyer name
+        Nama Pembeli
         <input
           name="name"
           required
@@ -26,7 +26,7 @@ export function BuyerCreateForm() {
         disabled={pending}
         className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
       >
-        Add buyer
+        Tambah Pembeli
       </button>
       {state && !state.ok && (
         <span role="alert" className="text-sm font-medium text-rose-600">

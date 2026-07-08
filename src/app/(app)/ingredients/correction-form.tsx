@@ -19,9 +19,9 @@ export function CorrectionForm({ ingredients }: { ingredients: { id: string; nam
     <form action={action} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Ingredient
+          Bahan
           <select name="ingredientId" required className={fieldClass}>
-            <option value="">Select…</option>
+            <option value="">Pilih…</option>
             {ingredients.map((i) => (
               <option key={i.id} value={i.id}>
                 {i.name}
@@ -30,13 +30,13 @@ export function CorrectionForm({ ingredients }: { ingredients: { id: string; nam
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Corrected balance (kg)
+          Saldo koreksi (kg)
           <input type="number" name="newQuantity" min="0" step="0.001" required className={fieldClass} />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Reason (≥ 20 chars)
-        <input name="reason" minLength={20} required placeholder="Physical count after spillage on…" className={fieldClass} />
+        Alasan (≥ 20 karakter)
+        <input name="reason" minLength={20} required placeholder="Hitung fisik setelah tumpahan pada…" className={fieldClass} />
       </label>
       <div className="flex items-center gap-3">
         <button
@@ -44,7 +44,7 @@ export function CorrectionForm({ ingredients }: { ingredients: { id: string; nam
           disabled={pending}
           className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Correct stock
+          Koreksi Stok
         </button>
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">

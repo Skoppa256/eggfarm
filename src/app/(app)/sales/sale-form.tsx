@@ -49,7 +49,7 @@ export function SaleForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Warehouse
+          Gudang
           <select name="warehouseId" defaultValue={warehouses[0]?.id} className={fieldClass}>
             {warehouses.map((w) => (
               <option key={w.id} value={w.id}>
@@ -59,7 +59,7 @@ export function SaleForm({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Buyer
+          Pembeli
           <select name="buyerId" defaultValue={buyers[0]?.id} className={fieldClass}>
             {buyers.map((b) => (
               <option key={b.id} value={b.id}>
@@ -69,7 +69,7 @@ export function SaleForm({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Business date
+          Tanggal bisnis
           <input type="date" name="date" defaultValue={defaultDate} className={fieldClass} />
         </label>
       </div>
@@ -80,8 +80,8 @@ export function SaleForm({
             <tr className="text-xs uppercase tracking-wide text-zinc-500">
               <th className="px-1 py-1 text-left">Grade</th>
               <th className="px-1 py-1 text-left">Type</th>
-              <th className="px-1 py-1 text-left">Qty</th>
-              <th className="px-1 py-1 text-left">Unit</th>
+              <th className="px-1 py-1 text-left">Jumlah</th>
+              <th className="px-1 py-1 text-left">Satuan</th>
             </tr>
           </thead>
           <tbody>
@@ -126,13 +126,13 @@ export function SaleForm({
           onClick={() => setRows((r) => r + 1)}
           className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
         >
-          + Add line
+          + Tambah Baris
         </button>
         <span className="text-sm font-medium">Total: {formatPcs(total)}</span>
       </div>
 
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Note (optional)
+        Catatan (opsional)
         <input name="notes" className={fieldClass} />
       </label>
 
@@ -142,10 +142,10 @@ export function SaleForm({
           disabled={pending || !canSell}
           className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
-          Record sale
+          Catat Penjualan
         </button>
         {!canSell && (
-          <span className="text-sm text-amber-600">Need an active warehouse and buyer first.</span>
+          <span className="text-sm text-amber-600">Perlu Gudang dan Pembeli aktif terlebih dahulu.</span>
         )}
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">

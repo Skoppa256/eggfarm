@@ -11,29 +11,29 @@ function navLinks(role: Role): { href: string; label: string }[] {
   const links = [{ href: "/dashboard", label: "Dashboard" }];
   // Reports: Owner + Superadmin (Admin is daily-ops only; reports are Superadmin-managed).
   if (role === "OWNER" || role === "SUPERADMIN") {
-    links.push({ href: "/reports", label: "Reports" });
+    links.push({ href: "/reports", label: "Laporan" });
   }
   // Daily operations: Admin + Superadmin (incl. Warehouse egg-stock ops).
   if (role === "ADMIN" || role === "SUPERADMIN") {
-    links.push({ href: "/collections", label: "Collection" });
+    links.push({ href: "/collections", label: "Pengambilan" });
     links.push({ href: "/grading", label: "Grading" });
-    links.push({ href: "/daily", label: "Daily" });
-    links.push({ href: "/ingredients", label: "Ingredients" });
+    links.push({ href: "/daily", label: "Harian" });
+    links.push({ href: "/ingredients", label: "Bahan Pakan" });
     links.push({ href: "/mixing", label: "Mixing" });
     links.push({ href: "/ovk", label: "OVK" });
     links.push({ href: "/vaksin", label: "Vaksin" });
-    links.push({ href: "/sales", label: "Sales" });
-    links.push({ href: "/buyers", label: "Buyers" });
-    links.push({ href: "/warehouse", label: "Warehouse" });
+    links.push({ href: "/sales", label: "Penjualan" });
+    links.push({ href: "/buyers", label: "Pembeli" });
+    links.push({ href: "/warehouse", label: "Gudang" });
   }
   // Structure & master data: Superadmin only (Warehouses master, Farmhouses, Flocks, catalogs, users).
   if (role === "SUPERADMIN") {
-    links.push({ href: "/warehouses", label: "Warehouses" });
-    links.push({ href: "/flocks", label: "Flocks" });
-    links.push({ href: "/farmhouses", label: "Farmhouses" });
-    links.push({ href: "/units", label: "Units" });
-    links.push({ href: "/grade-types", label: "Grade Types" });
-    links.push({ href: "/users", label: "Users" });
+    links.push({ href: "/warehouses", label: "Data Gudang" });
+    links.push({ href: "/flocks", label: "Flock" });
+    links.push({ href: "/farmhouses", label: "Kandang" });
+    links.push({ href: "/units", label: "Satuan" });
+    links.push({ href: "/grade-types", label: "Jenis Grade" });
+    links.push({ href: "/users", label: "Pengguna" });
   }
   return links;
 }
@@ -64,7 +64,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               type="submit"
               className="w-full rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100"
             >
-              Log out
+              Keluar
             </button>
           </form>
         </div>

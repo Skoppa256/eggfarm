@@ -26,13 +26,13 @@ export function VaksinLogForm({
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Date
+        Tanggal
         <input type="date" name="date" defaultValue={today} className={fieldClass} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Vaksin type
+        Jenis vaksin
         <select name="vaksinTypeId" required className={fieldClass}>
-          <option value="">Select…</option>
+          <option value="">Pilih…</option>
           {types.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
@@ -43,7 +43,7 @@ export function VaksinLogForm({
       <label className="flex flex-col gap-1 text-sm font-medium">
         Kandang
         <select name="farmhouseId" required className={fieldClass}>
-          <option value="">Select…</option>
+          <option value="">Pilih…</option>
           {kandangs.map((k) => (
             <option key={k.id} value={k.id}>
               {k.name} ({k.code})
@@ -52,19 +52,19 @@ export function VaksinLogForm({
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Vials
+        Vial
         <input type="number" name="vials" min={1} step={1} required className={`${fieldClass} w-24`} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Vaccinator
-        <input name="vaccinator" required placeholder="Name" className={fieldClass} />
+        Vaksinator
+        <input name="vaccinator" required placeholder="Nama" className={fieldClass} />
       </label>
       <button
         type="submit"
         disabled={pending}
         className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
       >
-        Log vaccination
+        Catat Vaksinasi
       </button>
       {state && !state.ok && (
         <span role="alert" className="self-center text-sm font-medium text-rose-600">

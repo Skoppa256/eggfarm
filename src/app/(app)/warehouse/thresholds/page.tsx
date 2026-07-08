@@ -27,7 +27,7 @@ export default async function ThresholdsPage({
   if (warehouses.length === 0) {
     return (
       <main className="mx-auto w-full max-w-5xl p-8">
-        <h1 className="text-xl font-semibold">No warehouses</h1>
+        <h1 className="text-xl font-semibold">Belum ada Gudang</h1>
       </main>
     );
   }
@@ -40,9 +40,9 @@ export default async function ThresholdsPage({
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Low-stock thresholds</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Batas Minimum Stok</h1>
         <p className="text-sm text-zinc-500">
-          Minimum balance per Egg SKU per warehouse. A SKU below its minimum is flagged.
+          Saldo minimum per SKU Telur per Gudang. SKU di bawah minimumnya akan ditandai.
         </p>
       </header>
 
@@ -50,21 +50,21 @@ export default async function ThresholdsPage({
       <WarehouseSelect warehouses={warehouses} selectedId={selectedId} />
 
       <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">Set a threshold</h2>
+        <h2 className="mb-4 text-lg font-semibold">Atur Batas Minimum</h2>
         <ThresholdForm warehouseId={selectedId} gradeTypes={gradeTypes} />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Configured thresholds</h2>
+        <h2 className="mb-3 text-lg font-semibold">Batas Minimum terkonfigurasi</h2>
         {thresholds.length === 0 ? (
-          <p className="text-sm text-zinc-500">None yet.</p>
+          <p className="text-sm text-zinc-500">Belum ada.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
             <table className="w-full text-left text-sm">
               <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
                 <tr>
                   <th className="px-4 py-2">Grade</th>
-                  <th className="px-4 py-2">Type</th>
+                  <th className="px-4 py-2">Tipe</th>
                   <th className="px-4 py-2 text-right">Minimum</th>
                 </tr>
               </thead>

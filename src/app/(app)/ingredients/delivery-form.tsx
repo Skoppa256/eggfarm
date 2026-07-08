@@ -24,9 +24,9 @@ export function DeliveryForm({
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Ingredient
+        Bahan
         <select name="ingredientId" required className={fieldClass}>
-          <option value="">Select…</option>
+          <option value="">Pilih…</option>
           {ingredients.map((i) => (
             <option key={i.id} value={i.id}>
               {i.name}
@@ -35,11 +35,11 @@ export function DeliveryForm({
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Quantity (kg)
+        Jumlah (kg)
         <input type="number" name="quantity" min="0.001" step="0.001" required className={fieldClass} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Date
+        Tanggal
         <input type="date" name="date" defaultValue={today} className={fieldClass} />
       </label>
       <button
@@ -47,7 +47,7 @@ export function DeliveryForm({
         disabled={pending}
         className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
       >
-        Record delivery
+        Catat Penerimaan
       </button>
       {state && !state.ok && (
         <span role="alert" className="self-center text-sm font-medium text-rose-600">

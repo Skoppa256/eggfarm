@@ -66,7 +66,7 @@ export default async function ReportPage({
     <label className="flex flex-col gap-1 text-sm font-medium">
       {label}
       <select name={name} defaultValue={one(sp, name) ?? ""} className={fieldClass}>
-        <option value="">All</option>
+        <option value="">Semua</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.label}
@@ -85,7 +85,7 @@ export default async function ReportPage({
         </div>
         <div className="flex items-center gap-2">
           <Link href="/reports" className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200">
-            ← Reports
+            ← Laporan
           </Link>
           <a href={exportHref} className="rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">
             Export .xlsx
@@ -95,25 +95,25 @@ export default async function ReportPage({
 
       {report.filters.length > 0 && (
         <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          {has("date") && dateInput("date", "Date")}
-          {has("from") && dateInput("from", "From")}
-          {has("to") && dateInput("to", "To")}
+          {has("date") && dateInput("date", "Tanggal")}
+          {has("from") && dateInput("from", "Dari")}
+          {has("to") && dateInput("to", "Sampai")}
           {has("farmhouseId") && select("farmhouseId", "Kandang", farmhouses.map((f) => ({ id: f.id, label: `${f.name} (${f.code})` })))}
-          {has("warehouseId") && select("warehouseId", "Warehouse", warehouses.map((w) => ({ id: w.id, label: `${w.name} (${w.code})` })))}
+          {has("warehouseId") && select("warehouseId", "Gudang", warehouses.map((w) => ({ id: w.id, label: `${w.name} (${w.code})` })))}
           {has("typeGradeId") && select("typeGradeId", "Type", gradeTypes.map((t) => ({ id: t.id, label: t.name })))}
-          {has("vaksinTypeId") && select("vaksinTypeId", "Vaksin type", vaksinTypes.map((t) => ({ id: t.id, label: t.name })))}
-          {has("buyerId") && select("buyerId", "Buyer", buyers.map((b) => ({ id: b.id, label: b.name })))}
+          {has("vaksinTypeId") && select("vaksinTypeId", "Jenis Vaksin", vaksinTypes.map((t) => ({ id: t.id, label: t.name })))}
+          {has("buyerId") && select("buyerId", "Pembeli", buyers.map((b) => ({ id: b.id, label: b.name })))}
           {has("vaccinator") && (
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Vaccinator
-              <input name="vaccinator" defaultValue={one(sp, "vaccinator") ?? ""} placeholder="name…" className={fieldClass} />
+              Vaksinator
+              <input name="vaccinator" defaultValue={one(sp, "vaccinator") ?? ""} placeholder="nama…" className={fieldClass} />
             </label>
           )}
           <button
             type="submit"
             className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
           >
-            Apply
+            Terapkan
           </button>
         </form>
       )}
@@ -133,7 +133,7 @@ export default async function ReportPage({
             {result.rows.length === 0 && (
               <tr>
                 <td colSpan={result.columns.length} className="px-4 py-3 text-zinc-500">
-                  No data for this selection.
+                  Tidak ada data untuk pilihan ini.
                 </td>
               </tr>
             )}
@@ -149,7 +149,7 @@ export default async function ReportPage({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-zinc-500">{result.rows.length} row(s).</p>
+      <p className="text-xs text-zinc-500">{result.rows.length} baris.</p>
     </main>
   );
 }

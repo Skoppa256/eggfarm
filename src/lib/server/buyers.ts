@@ -25,7 +25,7 @@ export function createBuyer(input: { name: string }) {
 export async function renameBuyer(id: string, name: string) {
   const existing = await prisma.buyer.findUnique({ where: { id } });
   if (!existing) {
-    throw new NotFoundError("Buyer not found.");
+    throw new NotFoundError("Pembeli tidak ditemukan.");
   }
   return prisma.buyer.update({ where: { id }, data: { name } });
 }
@@ -34,7 +34,7 @@ export async function renameBuyer(id: string, name: string) {
 export async function setBuyerStatus(id: string, status: RecordStatus) {
   const existing = await prisma.buyer.findUnique({ where: { id } });
   if (!existing) {
-    throw new NotFoundError("Buyer not found.");
+    throw new NotFoundError("Pembeli tidak ditemukan.");
   }
   return prisma.buyer.update({ where: { id }, data: { status } });
 }

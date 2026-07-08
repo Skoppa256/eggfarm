@@ -20,13 +20,13 @@ export default async function NewFlockPage() {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-6 sm:p-8">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">New chick-in</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Chick-in Baru</h1>
           <p className="text-sm text-zinc-500">
-            One flock, one strain and age, placed into one or more free kandang.
+            Satu flock, satu strain dan umur, ditempatkan ke satu atau lebih kandang kosong.
           </p>
         </div>
         <Link href="/flocks" className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200">
-          ← All flocks
+          ← Semua flock
         </Link>
       </header>
 

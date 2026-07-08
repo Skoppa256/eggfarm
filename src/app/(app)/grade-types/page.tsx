@@ -22,27 +22,27 @@ export default async function GradeTypesPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Grade types</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Jenis Grade</h1>
         <p className="text-sm text-zinc-500">
-          Egg Type catalog (Normal, Omega, …) — Superadmin managed.
+          Katalog Type Telur (Normal, Omega, …) — dikelola Superadmin.
         </p>
       </header>
 
       <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">Add a grade type</h2>
+        <h2 className="mb-4 text-lg font-semibold">Tambah Jenis Grade</h2>
         <GradeTypeCreateForm />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">All grade types</h2>
+        <h2 className="mb-3 text-lg font-semibold">Semua Jenis Grade</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2 text-right">Sort order</th>
+                <th className="px-4 py-2">Nama</th>
+                <th className="px-4 py-2 text-right">Urutan</th>
                 <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2 text-right">Action</th>
+                <th className="px-4 py-2 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -68,7 +68,7 @@ export default async function GradeTypesPage() {
                         <input type="hidden" name="id" value={g.id} />
                         <input type="hidden" name="status" value={active ? "INACTIVE" : "ACTIVE"} />
                         <button type="submit" className={btnClass}>
-                          {active ? "Deactivate" : "Reactivate"}
+                          {active ? "Nonaktifkan" : "Aktifkan"}
                         </button>
                       </form>
                     </td>

@@ -62,22 +62,22 @@ export default async function SalesPage({
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-6 sm:p-8">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Sales</h1>
-          <p className="text-sm text-zinc-500">Voided transactions are hidden unless included.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Penjualan</h1>
+          <p className="text-sm text-zinc-500">Transaksi yang dibatalkan disembunyikan kecuali disertakan.</p>
         </div>
         <Link
           href="/sales/new"
           className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
         >
-          New sale
+          Penjualan Baru
         </Link>
       </header>
 
       <form method="get" className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Warehouse
+          Gudang
           <select name="warehouseId" defaultValue={sp.warehouseId ?? ""} className={fieldClass}>
-            <option value="">All</option>
+            <option value="">Semua</option>
             {warehouses.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.code}
@@ -86,9 +86,9 @@ export default async function SalesPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Buyer
+          Pembeli
           <select name="buyerId" defaultValue={sp.buyerId ?? ""} className={fieldClass}>
-            <option value="">All</option>
+            <option value="">Semua</option>
             {buyers.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -97,17 +97,17 @@ export default async function SalesPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          From
+          Dari
           <input type="date" name="from" defaultValue={sp.from ?? ""} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          To
+          Sampai
           <input type="date" name="to" defaultValue={sp.to ?? ""} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           Grade
           <select name="sizeHealthGrade" defaultValue={grade ?? ""} className={fieldClass}>
-            <option value="">All</option>
+            <option value="">Semua</option>
             {SIZE_HEALTH_GRADES.map((g) => (
               <option key={g} value={g}>
                 {gradeLabel(g)}
@@ -117,26 +117,26 @@ export default async function SalesPage({
         </label>
         <label className="flex items-center gap-1 text-xs font-medium">
           <input type="checkbox" name="includeVoided" value="1" defaultChecked={includeVoided} />
-          Include voided
+          Sertakan yang dibatalkan
         </label>
         <button
           type="submit"
           className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Apply
+          Terapkan
         </button>
       </form>
 
       {sales.length === 0 ? (
-        <p className="text-sm text-zinc-500">No transactions match.</p>
+        <p className="text-sm text-zinc-500">Tidak ada transaksi yang cocok.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Date</th>
-                <th className="px-4 py-2">Buyer</th>
-                <th className="px-4 py-2">Warehouse</th>
+                <th className="px-4 py-2">Tanggal</th>
+                <th className="px-4 py-2">Pembeli</th>
+                <th className="px-4 py-2">Gudang</th>
                 <th className="px-4 py-2 text-right">Total</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2 text-right"></th>
@@ -165,7 +165,7 @@ export default async function SalesPage({
                     </td>
                     <td className="px-4 py-2 text-right">
                       <Link href={`/sales/${s.id}`} className="text-xs font-medium text-zinc-600 underline dark:text-zinc-300">
-                        View
+                        Lihat
                       </Link>
                     </td>
                   </tr>

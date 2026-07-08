@@ -24,11 +24,11 @@ export function OvkItemForm() {
     <form action={action} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Name
+          Nama
           <input name="name" required placeholder="Antibiotik X" className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Category
+          Kategori
           <select name="category" defaultValue={OvkCategory.OBAT} className={fieldClass}>
             {OVK_CATEGORY_ORDER.map((c) => (
               <option key={c} value={c}>
@@ -38,17 +38,17 @@ export function OvkItemForm() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Base unit
+          Satuan dasar
           <input name="baseUnit" required placeholder="liter" className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Sort order
+          Urutan
           <input type="number" name="sortOrder" min={0} defaultValue={0} className={fieldClass} />
         </label>
       </div>
 
       <fieldset className="rounded border border-zinc-200 p-3 dark:border-zinc-800">
-        <legend className="px-1 text-xs font-semibold text-zinc-500">Unit conversions (optional)</legend>
+        <legend className="px-1 text-xs font-semibold text-zinc-500">Konversi satuan (opsional)</legend>
         <input type="hidden" name="convCount" value={convs.length} />
         <div className="flex flex-col gap-2">
           {convs.map((c, i) => (
@@ -72,7 +72,7 @@ export function OvkItemForm() {
                 placeholder="1"
                 className={`${fieldClass} w-28`}
               />
-              <span className="text-zinc-500">base units</span>
+              <span className="text-zinc-500">satuan dasar</span>
             </div>
           ))}
           <button
@@ -80,7 +80,7 @@ export function OvkItemForm() {
             onClick={() => setConvs((cs) => [...cs, { unit: "", factor: "" }])}
             className="self-start rounded border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
-            + Add conversion
+            + Tambah konversi
           </button>
         </div>
       </fieldset>
@@ -91,7 +91,7 @@ export function OvkItemForm() {
           disabled={pending}
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Add item
+          Tambah Item
         </button>
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">

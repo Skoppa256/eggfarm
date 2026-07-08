@@ -44,21 +44,21 @@ export default async function OvkPage() {
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 sm:p-8">
       <header className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">OVK (Obat / Vitamin / Chemical)</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">OVK (Obat / Vitamin / Kimia)</h1>
           <p className="text-sm text-zinc-500">
-            One central office store. Deliveries increase stock; office→kandang transfers reduce it.
+            Satu Gudang OVK terpusat. Penerimaan menambah stok; transfer office→kandang menguranginya.
           </p>
         </div>
         <Link href="/ovk/pemakaian" className={btnClass}>
-          Pemakaian report →
+          Laporan Pemakaian →
         </Link>
       </header>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Record a delivery</h2>
+        <h2 className="mb-3 text-lg font-semibold">Catat Penerimaan</h2>
         <div className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
           {options.length === 0 ? (
-            <p className="text-sm text-zinc-500">Add an item below first.</p>
+            <p className="text-sm text-zinc-500">Tambah item di bawah terlebih dahulu.</p>
           ) : (
             <OvkEntryForm mode="delivery" items={options} today={today} />
           )}
@@ -66,10 +66,10 @@ export default async function OvkPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Transfer to a kandang</h2>
+        <h2 className="mb-3 text-lg font-semibold">Transfer ke kandang</h2>
         <div className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
           {options.length === 0 ? (
-            <p className="text-sm text-zinc-500">Add an item first.</p>
+            <p className="text-sm text-zinc-500">Tambah item terlebih dahulu.</p>
           ) : (
             <OvkEntryForm mode="transfer" items={options} kandangs={kandangs} today={today} />
           )}
@@ -77,23 +77,23 @@ export default async function OvkPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Office stock</h2>
+        <h2 className="mb-3 text-lg font-semibold">Stok Gudang OVK</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
                 <th className="px-4 py-2">Item</th>
-                <th className="px-4 py-2">Category</th>
-                <th className="px-4 py-2 text-right">On hand</th>
+                <th className="px-4 py-2">Kategori</th>
+                <th className="px-4 py-2 text-right">Tersedia</th>
                 <th className="px-4 py-2">Status</th>
-                {isSuperadmin && <th className="px-4 py-2 text-right">Action</th>}
+                {isSuperadmin && <th className="px-4 py-2 text-right">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {items.length === 0 && (
                 <tr>
                   <td colSpan={isSuperadmin ? 5 : 4} className="px-4 py-3 text-zinc-500">
-                    No items yet.
+                    Belum ada item.
                   </td>
                 </tr>
               )}
@@ -124,7 +124,7 @@ export default async function OvkPage() {
                           <input type="hidden" name="id" value={it.id} />
                           <input type="hidden" name="status" value={isActive ? "INACTIVE" : "ACTIVE"} />
                           <button type="submit" className={btnClass}>
-                            {isActive ? "Deactivate" : "Reactivate"}
+                            {isActive ? "Nonaktifkan" : "Aktifkan"}
                           </button>
                         </form>
                       </td>
@@ -139,7 +139,7 @@ export default async function OvkPage() {
 
       {active.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Correct office stock</h2>
+          <h2 className="mb-3 text-lg font-semibold">Koreksi Stok Gudang OVK</h2>
           <div className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
             <OvkCorrectionForm items={correctionItems} />
           </div>
@@ -148,30 +148,30 @@ export default async function OvkPage() {
 
       {isSuperadmin && (
         <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-          <h2 className="mb-4 text-lg font-semibold">Add an item (Superadmin)</h2>
+          <h2 className="mb-4 text-lg font-semibold">Tambah Item (Superadmin)</h2>
           <OvkItemForm />
         </section>
       )}
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Recent movements</h2>
+        <h2 className="mb-3 text-lg font-semibold">Pergerakan Terkini</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Date</th>
+                <th className="px-4 py-2">Tanggal</th>
                 <th className="px-4 py-2">Item</th>
-                <th className="px-4 py-2">Type</th>
-                <th className="px-4 py-2 text-right">Entered</th>
-                <th className="px-4 py-2">Kandang / note</th>
-                <th className="px-4 py-2 text-right">Balance</th>
+                <th className="px-4 py-2">Tipe</th>
+                <th className="px-4 py-2 text-right">Diinput</th>
+                <th className="px-4 py-2">Kandang / catatan</th>
+                <th className="px-4 py-2 text-right">Saldo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {movements.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-3 text-zinc-500">
-                    No movements yet.
+                    Belum ada pergerakan.
                   </td>
                 </tr>
               )}
@@ -180,7 +180,7 @@ export default async function OvkPage() {
                   <td className="px-4 py-2 tabular-nums">{m.date.toISOString().slice(0, 10)}</td>
                   <td className="px-4 py-2 font-medium">{m.ovkItem.name}</td>
                   <td className="px-4 py-2 text-zinc-500">
-                    {m.sourceType === "DELIVERY" ? "Delivery" : m.sourceType === "TRANSFER" ? "Transfer" : "Correction"}
+                    {m.sourceType === "DELIVERY" ? "Penerimaan" : m.sourceType === "TRANSFER" ? "Transfer" : "Koreksi"}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     {m.enteredQuantity.toFixed(3)} {m.unitUsed}

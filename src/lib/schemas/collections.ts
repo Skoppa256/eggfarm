@@ -5,8 +5,8 @@ import { z } from "zod";
 
 const count = z.coerce
   .number()
-  .int("Must be a whole number.")
-  .min(0, "Cannot be negative.")
+  .int("Harus bilangan bulat.")
+  .min(0, "Tidak boleh negatif.")
   .default(0);
 
 export const collectionCountsSchema = z.object({
@@ -18,8 +18,8 @@ export const collectionCountsSchema = z.object({
 });
 
 export const collectionKeySchema = z.object({
-  farmhouseId: z.string().min(1, "Choose a kandang."),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date."),
+  farmhouseId: z.string().min(1, "Pilih Kandang."),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid."),
   batchNumber: z.coerce.number().int().min(1),
 });
 

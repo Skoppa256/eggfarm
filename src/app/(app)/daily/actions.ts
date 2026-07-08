@@ -26,13 +26,13 @@ function parseInput(formData: FormData): DailyInput | { error: string } {
     sisaDibuang: formData.get("sisaDibuang"),
     beratTelur: formData.get("beratTelur"),
   });
-  if (!core.success) return { error: core.error.issues[0]?.message ?? "Invalid input." };
+  if (!core.success) return { error: core.error.issues[0]?.message ?? "Input tidak valid." };
 
   let beratBadan: number | null = null;
   const bbRaw = formData.get("beratBadan");
   if (typeof bbRaw === "string" && bbRaw.trim() !== "") {
     const n = Number(bbRaw);
-    if (!Number.isFinite(n) || n < 0) return { error: "BERAT BADAN must be a non-negative number." };
+    if (!Number.isFinite(n) || n < 0) return { error: "BERAT BADAN harus bilangan yang tidak boleh negatif." };
     beratBadan = n;
   }
 
@@ -56,7 +56,7 @@ export async function createDailyRecordAction(
     date: formData.get("date"),
   });
   if (!key.success) {
-    return { ok: false, error: key.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: key.error.issues[0]?.message ?? "Input tidak valid." };
   }
   const input = parseInput(formData);
   if ("error" in input) return { ok: false, error: input.error };
@@ -68,7 +68,7 @@ export async function createDailyRecordAction(
       { userId: user.id },
     );
     revalidatePath(PATH);
-    return { ok: true, message: "Daily record saved." };
+    return { ok: true, message: "Daily record disimpan." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -83,7 +83,7 @@ export async function updateDailyRecordAction(
 
   const recordId = formData.get("recordId");
   if (typeof recordId !== "string" || recordId.length === 0) {
-    return { ok: false, error: "Missing record reference." };
+    return { ok: false, error: "Referensi record tidak ada." };
   }
   const input = parseInput(formData);
   if ("error" in input) return { ok: false, error: input.error };
@@ -91,7 +91,7 @@ export async function updateDailyRecordAction(
   try {
     await updateDailyRecord(recordId, input, { userId: user.id });
     revalidatePath(PATH);
-    return { ok: true, message: "Saved." };
+    return { ok: true, message: "Tersimpan." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

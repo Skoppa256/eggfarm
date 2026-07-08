@@ -101,28 +101,28 @@ export async function createSale(input: SaleInput, ctx: Ctx) {
   const date = toBusinessDate(input.date);
 
   if (input.lines.length === 0) {
-    throw new ConflictError("A sale needs at least one line item.");
+    throw new ConflictError("Penjualan butuh minimal satu baris item.");
   }
   for (const line of input.lines) {
     if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
-      throw new ConflictError("Each line needs a positive whole quantity (pcs).");
+      throw new ConflictError("Setiap baris butuh jumlah bulat positif (pcs).");
     }
   }
 
   const warehouse = await prisma.warehouse.findUnique({ where: { id: input.warehouseId } });
   if (!warehouse) {
-    throw new NotFoundError("Warehouse not found.");
+    throw new NotFoundError("Gudang tidak ditemukan.");
   }
   if (warehouse.status !== RecordStatus.ACTIVE) {
-    throw new ConflictError("Warehouse is not active — it cannot be a dispatch target.");
+    throw new ConflictError("Gudang tidak aktif — tidak bisa menjadi target pengiriman.");
   }
 
   const buyer = await prisma.buyer.findUnique({ where: { id: input.buyerId } });
   if (!buyer) {
-    throw new NotFoundError("Buyer not found.");
+    throw new NotFoundError("Pembeli tidak ditemukan.");
   }
   if (buyer.status !== RecordStatus.ACTIVE) {
-    throw new ConflictError("Buyer is not active.");
+    throw new ConflictError("Pembeli tidak aktif.");
   }
 
   const orderedLines = [...input.lines].sort((a, b) =>
@@ -176,7 +176,7 @@ export async function createSale(input: SaleInput, ctx: Ctx) {
 export async function voidSale(transactionId: string, reason: string, ctx: Ctx) {
   const trimmed = reason.trim();
   if (trimmed.length < 10) {
-    throw new ConflictError("A void needs a reason of at least 10 characters.");
+    throw new ConflictError("Pembatalan butuh alasan minimal 10 karakter.");
   }
 
   const sale = await prisma.salesTransaction.findUnique({
@@ -184,10 +184,10 @@ export async function voidSale(transactionId: string, reason: string, ctx: Ctx) 
     include: { lineItems: true },
   });
   if (!sale) {
-    throw new NotFoundError("Transaction not found.");
+    throw new NotFoundError("Transaksi tidak ditemukan.");
   }
   if (sale.status === SalesStatus.VOIDED) {
-    throw new ConflictError("This transaction is already voided.");
+    throw new ConflictError("Transaksi ini sudah dibatalkan.");
   }
 
   return prisma.$transaction(async (tx) => {
@@ -203,7 +203,7 @@ export async function voidSale(transactionId: string, reason: string, ctx: Ctx) 
       },
     });
     if (claimed.count === 0) {
-      throw new ConflictError("This transaction is already voided.");
+      throw new ConflictError("Transaksi ini sudah dibatalkan.");
     }
 
     for (const line of sale.lineItems) {

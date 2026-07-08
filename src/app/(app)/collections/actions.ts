@@ -24,7 +24,7 @@ function readLifts(formData: FormData): AngkatRakLiftInput[] | { error: string }
     if (!key.startsWith("rak_")) continue;
     const rak = Number(value);
     if (!Number.isInteger(rak) || rak < 0) {
-      return { error: "Angkat Rak must be a whole, non-negative number of rak." };
+      return { error: "Angkat Rak harus bilangan bulat rak dan tidak boleh negatif." };
     }
     lifts.push({ typeGradeId: key.slice(4), quantity: rakToPcs(rak) });
   }
@@ -40,7 +40,7 @@ function parseCounts(formData: FormData): CollectionCounts | { error: string } {
     remarks: formData.get("remarks") ?? undefined,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   const lifts = readLifts(formData);
   if ("error" in lifts) return { error: lifts.error };
@@ -59,7 +59,7 @@ export async function createCollectionAction(
     batchNumber: formData.get("batchNumber"),
   });
   if (!key.success) {
-    return { ok: false, error: key.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: key.error.issues[0]?.message ?? "Input tidak valid." };
   }
   const counts = parseCounts(formData);
   if ("error" in counts) return { ok: false, error: counts.error };
@@ -75,7 +75,7 @@ export async function createCollectionAction(
       { userId: user.id },
     );
     revalidatePath(PATH);
-    return { ok: true, message: `Batch ${key.data.batchNumber} saved.` };
+    return { ok: true, message: `Batch ${key.data.batchNumber} disimpan.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -90,7 +90,7 @@ export async function updateCollectionAction(
 
   const collectionId = formData.get("collectionId");
   if (typeof collectionId !== "string" || collectionId.length === 0) {
-    return { ok: false, error: "Missing collection reference." };
+    return { ok: false, error: "Referensi collection tidak ada." };
   }
   const counts = parseCounts(formData);
   if ("error" in counts) return { ok: false, error: counts.error };
@@ -103,7 +103,7 @@ export async function updateCollectionAction(
   try {
     await updateCollection(collectionId, counts, { userId: user.id }, { allowGradedEdit });
     revalidatePath(PATH);
-    return { ok: true, message: "Saved." };
+    return { ok: true, message: "Tersimpan." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

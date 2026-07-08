@@ -34,11 +34,11 @@ export function listActiveIngredients() {
 export async function createIngredient(input: IngredientInput) {
   const name = input.name.trim();
   if (name.length === 0) {
-    throw new ConflictError("Ingredient name is required.");
+    throw new ConflictError("Nama bahan wajib diisi.");
   }
   const existing = await prisma.ingredient.findUnique({ where: { name } });
   if (existing) {
-    throw new ConflictError(`Ingredient "${name}" already exists.`);
+    throw new ConflictError(`Bahan "${name}" sudah ada.`);
   }
   return prisma.ingredient.create({
     data: {
@@ -54,7 +54,7 @@ export async function createIngredient(input: IngredientInput) {
 export async function setIngredientStatus(id: string, status: RecordStatus) {
   const existing = await prisma.ingredient.findUnique({ where: { id } });
   if (!existing) {
-    throw new NotFoundError("Ingredient not found.");
+    throw new NotFoundError("Bahan tidak ditemukan.");
   }
   return prisma.ingredient.update({ where: { id }, data: { status } });
 }

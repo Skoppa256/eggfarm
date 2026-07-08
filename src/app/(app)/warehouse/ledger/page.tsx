@@ -46,7 +46,7 @@ export default async function LedgerPage({
   if (warehouses.length === 0) {
     return (
       <main className="mx-auto w-full max-w-5xl p-8">
-        <h1 className="text-xl font-semibold">No warehouses</h1>
+        <h1 className="text-xl font-semibold">Belum ada Gudang</h1>
       </main>
     );
   }
@@ -73,15 +73,15 @@ export default async function LedgerPage({
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Movement ledger</h1>
-        <p className="text-sm text-zinc-500">Read-only. Corrections and voids are marked.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Mutasi Stok</h1>
+        <p className="text-sm text-zinc-500">Hanya-baca. Koreksi dan void ditandai.</p>
       </header>
 
       <WarehouseTabs active="ledger" warehouseId={selectedId} role={user.role} />
 
       <form method="get" className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Warehouse
+          Gudang
           <select name="warehouseId" defaultValue={selectedId} className={fieldClass}>
             {warehouses.map((w) => (
               <option key={w.id} value={w.id}>
@@ -91,17 +91,17 @@ export default async function LedgerPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          From
+          Dari
           <input type="date" name="from" defaultValue={sp.from ?? ""} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          To
+          Sampai
           <input type="date" name="to" defaultValue={sp.to ?? ""} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           Grade
           <select name="sizeHealthGrade" defaultValue={grade ?? ""} className={fieldClass}>
-            <option value="">All</option>
+            <option value="">Semua</option>
             {SIZE_HEALTH_GRADES.map((g) => (
               <option key={g} value={g}>
                 {gradeLabel(g)}
@@ -110,9 +110,9 @@ export default async function LedgerPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
-          Type
+          Tipe
           <select name="typeGradeId" defaultValue={typeGradeId ?? ""} className={fieldClass}>
-            <option value="">All</option>
+            <option value="">Semua</option>
             {gradeTypes.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
@@ -124,23 +124,23 @@ export default async function LedgerPage({
           type="submit"
           className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Apply
+          Terapkan
         </button>
       </form>
 
       {ledger.length === 0 ? (
-        <p className="text-sm text-zinc-500">No movements match.</p>
+        <p className="text-sm text-zinc-500">Tidak ada mutasi yang cocok.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">When</th>
-                <th className="px-4 py-2">Grade / Type</th>
-                <th className="px-4 py-2">Movement</th>
-                <th className="px-4 py-2 text-right">Quantity</th>
-                <th className="px-4 py-2 text-right">Balance</th>
-                <th className="px-4 py-2">Source / reason</th>
+                <th className="px-4 py-2">Waktu</th>
+                <th className="px-4 py-2">Grade / Tipe</th>
+                <th className="px-4 py-2">Mutasi</th>
+                <th className="px-4 py-2 text-right">Jumlah</th>
+                <th className="px-4 py-2 text-right">Saldo</th>
+                <th className="px-4 py-2">Sumber / alasan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">

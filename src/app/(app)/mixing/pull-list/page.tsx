@@ -33,13 +33,13 @@ export default async function PullListPage({
           href={`/mixing?farmhouseId=${sp.farmhouseId}&date=${sp.date}&intake=${mix.projectedIntake.toString()}`}
           className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
         >
-          ← Back to mixing
+          ← Kembali ke mixing
         </Link>
         <PrintButton />
       </div>
 
       <header className="border-b border-zinc-300 pb-3">
-        <h1 className="text-xl font-bold">Feed pull-list</h1>
+        <h1 className="text-xl font-bold">Pull-list Pakan</h1>
         <div className="mt-1 text-sm">
           <div>
             <span className="text-zinc-500">Kandang:</span>{" "}
@@ -48,12 +48,12 @@ export default async function PullListPage({
             </span>
           </div>
           <div>
-            <span className="text-zinc-500">Consumption day:</span>{" "}
+            <span className="text-zinc-500">Hari konsumsi:</span>{" "}
             <span className="font-medium tabular-nums">{sp.date}</span>
           </div>
           <div>
             <span className="text-zinc-500">JENIS:</span>{" "}
-            <span className="font-medium">{mix.jenis || "— (no fresh mix)"}</span>
+            <span className="font-medium">{mix.jenis || "— (tidak ada campuran segar)"}</span>
           </div>
           <div>
             <span className="text-zinc-500">PAKAN MASUK:</span>{" "}
@@ -65,9 +65,9 @@ export default async function PullListPage({
       <table className="w-full text-left text-sm">
         <thead className="border-b border-zinc-300 text-xs uppercase tracking-wide text-zinc-500">
           <tr>
-            <th className="py-2">Ingredient</th>
-            <th className="py-2 text-right">Weight</th>
-            <th className="py-2 pl-3">Unit</th>
+            <th className="py-2">Bahan</th>
+            <th className="py-2 text-right">Berat</th>
+            <th className="py-2 pl-3">Satuan</th>
           </tr>
         </thead>
         <tbody>
@@ -79,7 +79,7 @@ export default async function PullListPage({
             </tr>
           ))}
           <tr className="font-semibold">
-            <td className="py-2">Total fresh mix</td>
+            <td className="py-2">Total campuran segar</td>
             <td className="py-2 text-right tabular-nums">{mix.totalCampur.toFixed(3)}</td>
             <td className="py-2 pl-3">kg</td>
           </tr>

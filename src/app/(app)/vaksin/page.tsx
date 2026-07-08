@@ -54,18 +54,18 @@ export default async function VaksinPage({
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">VAKSIN log</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Log VAKSIN</h1>
         <p className="text-sm text-zinc-500">
-          A vaccination activity log — no inventory. The daily record&apos;s VAKSIN field derives
-          from this log.
+          Log aktivitas vaksinasi — tanpa inventori. Kolom VAKSIN pada catatan harian berasal
+          dari log ini.
         </p>
       </header>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Log a vaccination</h2>
+        <h2 className="mb-3 text-lg font-semibold">Catat Vaksinasi</h2>
         <div className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
           {activeTypes.length === 0 ? (
-            <p className="text-sm text-zinc-500">Add a vaksin type below first.</p>
+            <p className="text-sm text-zinc-500">Tambah jenis vaksin di bawah terlebih dahulu.</p>
           ) : (
             <VaksinLogForm types={activeTypes} kandangs={kandangs} today={today} />
           )}
@@ -76,17 +76,17 @@ export default async function VaksinPage({
         <h2 className="mb-3 text-lg font-semibold">Log</h2>
         <form method="get" className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           <label className="flex flex-col gap-1 text-sm font-medium">
-            From
+            Dari
             <input type="date" name="from" defaultValue={sp.from ?? ""} className={fieldClass} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            To
+            Sampai
             <input type="date" name="to" defaultValue={sp.to ?? ""} className={fieldClass} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Kandang
             <select name="farmhouseId" defaultValue={sp.farmhouseId ?? ""} className={fieldClass}>
-              <option value="">All</option>
+              <option value="">Semua</option>
               {kandangs.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.name} ({k.code})
@@ -95,9 +95,9 @@ export default async function VaksinPage({
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Type
+            Jenis
             <select name="vaksinTypeId" defaultValue={sp.vaksinTypeId ?? ""} className={fieldClass}>
-              <option value="">All</option>
+              <option value="">Semua</option>
               {allTypes.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
@@ -106,8 +106,8 @@ export default async function VaksinPage({
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Vaccinator
-            <input name="vaccinator" defaultValue={sp.vaccinator ?? ""} placeholder="name…" className={fieldClass} />
+            Vaksinator
+            <input name="vaccinator" defaultValue={sp.vaccinator ?? ""} placeholder="nama…" className={fieldClass} />
           </label>
           <button
             type="submit"
@@ -121,18 +121,18 @@ export default async function VaksinPage({
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Date</th>
+                <th className="px-4 py-2">Tanggal</th>
                 <th className="px-4 py-2">Vaksin</th>
                 <th className="px-4 py-2">Kandang</th>
-                <th className="px-4 py-2 text-right">Vials</th>
-                <th className="px-4 py-2">Vaccinator</th>
+                <th className="px-4 py-2 text-right">Vial</th>
+                <th className="px-4 py-2">Vaksinator</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {logs.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-3 text-zinc-500">
-                    No vaccinations match.
+                    Tidak ada vaksinasi yang cocok.
                   </td>
                 </tr>
               )}
@@ -151,21 +151,21 @@ export default async function VaksinPage({
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Vaksin types</h2>
+        <h2 className="mb-3 text-lg font-semibold">Jenis Vaksin</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Nama</th>
                 <th className="px-4 py-2">Status</th>
-                {isSuperadmin && <th className="px-4 py-2 text-right">Action</th>}
+                {isSuperadmin && <th className="px-4 py-2 text-right">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {allTypes.length === 0 && (
                 <tr>
                   <td colSpan={isSuperadmin ? 3 : 2} className="px-4 py-3 text-zinc-500">
-                    No vaksin types yet.
+                    Belum ada jenis vaksin.
                   </td>
                 </tr>
               )}
@@ -191,7 +191,7 @@ export default async function VaksinPage({
                           <input type="hidden" name="id" value={t.id} />
                           <input type="hidden" name="status" value={active ? "INACTIVE" : "ACTIVE"} />
                           <button type="submit" className={btnClass}>
-                            {active ? "Deactivate" : "Reactivate"}
+                            {active ? "Nonaktifkan" : "Aktifkan"}
                           </button>
                         </form>
                       </td>
@@ -206,7 +206,7 @@ export default async function VaksinPage({
 
       {isSuperadmin && (
         <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-          <h2 className="mb-4 text-lg font-semibold">Add a vaksin type (Superadmin)</h2>
+          <h2 className="mb-4 text-lg font-semibold">Tambah Jenis Vaksin (Superadmin)</h2>
           <VaksinTypeForm />
         </section>
       )}

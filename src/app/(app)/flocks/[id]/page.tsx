@@ -36,7 +36,7 @@ export default async function FlockDetailPage({ params }: { params: Promise<{ id
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">{flock.strain}</h1>
         <Link href="/flocks" className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200">
-          ← All flocks
+          ← Semua flock
         </Link>
       </header>
 
@@ -46,15 +46,15 @@ export default async function FlockDetailPage({ params }: { params: Promise<{ id
           <div className="font-medium">{flock.chickInDate.toISOString().slice(0, 10)}</div>
         </div>
         <div>
-          <div className="text-xs text-zinc-500">Placement age</div>
-          <div className="font-medium">{flock.placementAge} d</div>
+          <div className="text-xs text-zinc-500">Umur penempatan</div>
+          <div className="font-medium">{flock.placementAge} hari</div>
         </div>
         <div>
-          <div className="text-xs text-zinc-500">HARI (today)</div>
+          <div className="text-xs text-zinc-500">HARI (hari ini)</div>
           <div className="font-medium tabular-nums">{hari}</div>
         </div>
         <div>
-          <div className="text-xs text-zinc-500">MINGGU (today)</div>
+          <div className="text-xs text-zinc-500">MINGGU (hari ini)</div>
           <div className="font-medium tabular-nums">{minggu}</div>
         </div>
         <div>
@@ -66,16 +66,16 @@ export default async function FlockDetailPage({ params }: { params: Promise<{ id
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Placements</h2>
+        <h2 className="mb-3 text-lg font-semibold">Penempatan</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
                 <th className="px-4 py-2">Kandang</th>
                 <th className="px-4 py-2 text-right">Populasi Awal</th>
-                <th className="px-4 py-2 text-right">HIDUP (today)</th>
+                <th className="px-4 py-2 text-right">HIDUP (hari ini)</th>
                 <th className="px-4 py-2">Status</th>
-                {isSuperadmin && <th className="px-4 py-2">End</th>}
+                {isSuperadmin && <th className="px-4 py-2">Akhiri</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -109,7 +109,7 @@ export default async function FlockDetailPage({ params }: { params: Promise<{ id
                       {p.status === "ACTIVE" ? (
                         <EndPlacementForm placementId={p.id} defaultDate={todayStr} />
                       ) : (
-                        <span className="text-xs text-zinc-400">ended</span>
+                        <span className="text-xs text-zinc-400">selesai</span>
                       )}
                     </td>
                   )}

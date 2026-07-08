@@ -249,19 +249,19 @@ export async function recordCorrection(input: CorrectionInput) {
   const reason = input.reason.trim();
   if (reason.length < CORRECTION_MIN_REASON) {
     throw new ConflictError(
-      `A correction needs a reason of at least ${CORRECTION_MIN_REASON} characters.`,
+      `Koreksi memerlukan alasan minimal ${CORRECTION_MIN_REASON} karakter.`,
     );
   }
   const hasAbsolute = input.newQuantity != null;
   const hasDelta = input.delta != null;
   if (hasAbsolute === hasDelta) {
-    throw new ConflictError("Provide either a corrected quantity or a delta, not both.");
+    throw new ConflictError("Isi salah satu: jumlah terkoreksi atau selisih, tidak keduanya.");
   }
   if (hasAbsolute && (!Number.isInteger(input.newQuantity) || (input.newQuantity ?? 0) < 0)) {
-    throw new ConflictError("Corrected quantity must be a non-negative whole number (pcs).");
+    throw new ConflictError("Jumlah terkoreksi harus bilangan bulat non-negatif (pcs).");
   }
   if (hasDelta && !Number.isInteger(input.delta)) {
-    throw new ConflictError("Delta must be a whole number (pcs).");
+    throw new ConflictError("Selisih harus bilangan bulat (pcs).");
   }
 
   return prisma.$transaction((tx) =>
@@ -272,11 +272,11 @@ export async function recordCorrection(input: CorrectionInput) {
         const post = hasAbsolute ? (input.newQuantity as number) : pre + (input.delta as number);
         if (post < 0) {
           throw new ConflictError(
-            `Correction would drive ${await skuLabel(tx, input.sizeHealthGrade, input.typeGradeId)} below zero.`,
+            `Koreksi akan membuat ${await skuLabel(tx, input.sizeHealthGrade, input.typeGradeId)} di bawah nol.`,
           );
         }
         if (post === pre) {
-          throw new ConflictError("Correction must change the balance.");
+          throw new ConflictError("Koreksi harus mengubah saldo.");
         }
         return post;
       },

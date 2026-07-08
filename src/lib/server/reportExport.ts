@@ -10,7 +10,7 @@ import type { ReportResult } from "@/lib/server/reports";
 export async function reportToXlsx(title: string, result: ReportResult): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "EggFarm IMS";
-  const ws = wb.addWorksheet((title || "Report").slice(0, 31));
+  const ws = wb.addWorksheet((title || "Laporan").slice(0, 31));
 
   const header = ws.addRow(result.columns.map((c) => c.label));
   header.font = { bold: true };

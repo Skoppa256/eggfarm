@@ -35,12 +35,12 @@ function readPlacements(formData: FormData): PlacementInput[] | { error: string 
     if (blank) continue;
     const parsed = placementSchema.safeParse({ farmhouseId, populasiAwal: popRaw });
     if (!parsed.success) {
-      return { error: `Placement ${i + 1}: ${parsed.error.issues[0]?.message ?? "invalid"}.` };
+      return { error: `Placement ${i + 1}: ${parsed.error.issues[0]?.message ?? "tidak valid"}.` };
     }
     placements.push(parsed.data);
   }
   if (placements.length === 0) {
-    return { error: "Assign at least one kandang with a Populasi Awal." };
+    return { error: "Tetapkan minimal satu Kandang dengan Populasi Awal." };
   }
   return placements;
 }
@@ -58,7 +58,7 @@ export async function createFlockAction(
     placementAge: formData.get("placementAge"),
   });
   if (!header.success) {
-    return { ok: false, error: header.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: header.error.issues[0]?.message ?? "Input tidak valid." };
   }
   const placements = readPlacements(formData);
   if ("error" in placements) return { ok: false, error: placements.error };
@@ -95,7 +95,7 @@ export async function endPlacementAction(
     endDate: formData.get("endDate"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     const placement = await endPlacement(
@@ -104,7 +104,7 @@ export async function endPlacementAction(
     );
     revalidatePath("/flocks");
     if (placement) revalidatePath(`/flocks/${placement.flockId}`);
-    return { ok: true, message: "Placement ended; kandang freed." };
+    return { ok: true, message: "Placement diakhiri; Kandang dibebaskan." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -123,13 +123,13 @@ export async function correctPopulasiAwalAction(
     populasiAwal: formData.get("populasiAwal"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     const placement = await correctPopulasiAwal(parsed.data.placementId, parsed.data.populasiAwal);
     revalidatePath("/flocks");
     if (placement) revalidatePath(`/flocks/${placement.flockId}`);
-    return { ok: true, message: "Populasi Awal corrected; HIDUP re-based." };
+    return { ok: true, message: "Populasi Awal dikoreksi; HIDUP dihitung ulang." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

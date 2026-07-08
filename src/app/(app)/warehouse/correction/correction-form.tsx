@@ -28,7 +28,7 @@ export function CorrectionForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Size &amp; Health grade
+          Grade Ukuran &amp; Kesehatan
           <select name="sizeHealthGrade" defaultValue={SIZE_HEALTH_GRADES[0]} className={fieldClass}>
             {SIZE_HEALTH_GRADES.map((g) => (
               <option key={g} value={g}>
@@ -38,7 +38,7 @@ export function CorrectionForm({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Egg type
+          Tipe Telur
           <select name="typeGradeId" defaultValue={gradeTypes[0]?.id} className={fieldClass}>
             {gradeTypes.map((t) => (
               <option key={t.id} value={t.id}>
@@ -50,23 +50,23 @@ export function CorrectionForm({
         <label className="flex flex-col gap-1 text-sm font-medium">
           Mode
           <select name="mode" defaultValue="absolute" className={fieldClass}>
-            <option value="absolute">Set corrected quantity (pcs)</option>
-            <option value="delta">Adjust by delta (pcs, +/−)</option>
+            <option value="absolute">Set jumlah terkoreksi (pcs)</option>
+            <option value="delta">Sesuaikan dengan delta (pcs, +/−)</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Value (pcs)
+          Nilai (pcs)
           <input type="number" name="value" step={1} required className={fieldClass} />
         </label>
       </div>
 
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Reason (≥ 20 characters — required)
+        Alasan (≥ 20 karakter — wajib)
         <textarea name="reason" required minLength={20} rows={2} className={fieldClass} />
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Reference (optional)
+        Referensi (opsional)
         <input name="reference" className={fieldClass} />
       </label>
 
@@ -76,7 +76,7 @@ export function CorrectionForm({
           disabled={pending}
           className="rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
         >
-          Submit correction
+          Kirim koreksi
         </button>
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">
@@ -90,7 +90,7 @@ export function CorrectionForm({
         )}
       </div>
       <p className="text-xs text-zinc-500">
-        Corrections are immutable — to fix a mistake, submit another correction.
+        Koreksi bersifat permanen — untuk memperbaiki kesalahan, kirim koreksi lain.
       </p>
     </form>
   );

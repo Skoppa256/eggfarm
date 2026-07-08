@@ -70,10 +70,10 @@ export default async function DailyPage({
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Daily farmhouse recording</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Pencatatan Harian Kandang</h1>
         <p className="text-sm text-zinc-500">
-          One record per kandang per business day for the active placement. Age, HIDUP, egg
-          buckets, HD% and the feed indicators derive automatically.
+          Satu catatan per kandang per hari untuk penempatan aktif. Umur, HIDUP, Kelompok
+          Telur, HD% dan indikator pakan dihitung otomatis.
         </p>
       </header>
 
@@ -84,7 +84,7 @@ export default async function DailyPage({
         <label className="flex flex-col gap-1 text-sm font-medium">
           Kandang
           <select name="farmhouseId" defaultValue={farmhouseId ?? ""} className={fieldClass}>
-            <option value="">Select…</option>
+            <option value="">Pilih…</option>
             {farmhouses.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name} ({f.code})
@@ -93,14 +93,14 @@ export default async function DailyPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Business date
+          Tanggal
           <input type="date" name="date" defaultValue={dateStr} className={fieldClass} />
         </label>
         <button
           type="submit"
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Load
+          Muat
         </button>
       </form>
 
@@ -111,7 +111,7 @@ export default async function DailyPage({
           kandang={farmhouses.find((f) => f.id === farmhouseId)!}
         />
       ) : (
-        <p className="text-sm text-zinc-500">Choose a kandang and date, then Load.</p>
+        <p className="text-sm text-zinc-500">Pilih kandang dan tanggal, lalu Muat.</p>
       )}
     </main>
   );
@@ -132,7 +132,7 @@ async function DailyEditor({
   if (!placement) {
     return (
       <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        No placement occupies this kandang on {dateStr}. Chick-in a flock first (Flocks).
+        Belum ada penempatan di kandang ini pada {dateStr}. Lakukan Chick-in flock dulu (Flock).
       </p>
     );
   }
@@ -221,21 +221,21 @@ async function DailyEditor({
         <Stat label="Flock / Kandang" value={`${placement.flock.strain}`} />
         <Stat label="HARI" value={hari} />
         <Stat label="MINGGU" value={minggu} />
-        <Stat label={existing ? "HIDUP (recorded)" : "HIDUP (entering)"} value={hidup} />
+        <Stat label={existing ? "HIDUP (tercatat)" : "HIDUP (masuk)"} value={hidup} />
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-zinc-500">VAKSIN (from the log)</h2>
+        <h2 className="mb-2 text-sm font-semibold text-zinc-500">VAKSIN (dari log)</h2>
         <div className="rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
           {vaksinLogs.length === 0 ? (
-            <span className="text-zinc-500">— no vaccinations logged for this kandang/date</span>
+            <span className="text-zinc-500">— belum ada vaksinasi tercatat untuk kandang/tanggal ini</span>
           ) : (
             <ul className="flex flex-wrap gap-x-6 gap-y-1">
               {vaksinLogs.map((v) => (
                 <li key={v.id} className="font-medium">
                   {v.vaksinType.name}{" "}
                   <span className="font-normal text-zinc-500">
-                    · {v.vials} vial{v.vials > 1 ? "s" : ""} · {v.vaccinator}
+                    · {v.vials} vial · {v.vaccinator}
                   </span>
                 </li>
               ))}
@@ -246,7 +246,7 @@ async function DailyEditor({
 
       <div>
         <h2 className="mb-2 text-sm font-semibold text-zinc-500">
-          Egg buckets {buckets.reconciledToGrading ? "(reconciled to grading)" : "(from collection)"}
+          Kelompok Telur {buckets.reconciledToGrading ? "(dicocokkan ke grading)" : "(dari pengambilan)"}
         </h2>
         <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-5">
           <Stat
@@ -264,7 +264,7 @@ async function DailyEditor({
           />
           <Stat label="Kosong" value={buckets.kosong} />
           <Stat
-            label={existing ? "HD% (recorded)" : "HD% (live)"}
+            label={existing ? "HD% (tercatat)" : "HD% (live)"}
             value={(existing ? existing.hdPercent.toNumber() : computeHdPercent(buckets.total, hidup)).toFixed(2)}
           />
         </div>
@@ -277,10 +277,10 @@ async function DailyEditor({
             className={`font-normal ${frozen ? "text-zinc-400" : "text-amber-600 dark:text-amber-400"}`}
           >
             {frozen
-              ? "· recorded (frozen at save)"
+              ? "· tercatat (dibekukan saat simpan)"
               : mix
-                ? "· from mixing — freezes when the daily record is saved"
-                : "· no mix for this day yet (MASUK 0)"}
+                ? "· dari mixing — dibekukan saat catatan harian disimpan"
+                : "· belum ada mixing untuk hari ini (MASUK 0)"}
           </span>
         </h2>
         <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800 sm:grid-cols-6">
@@ -295,7 +295,7 @@ async function DailyEditor({
 
       <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-semibold">{existing ? "Edit daily record" : "New daily record"}</h2>
+          <h2 className="font-semibold">{existing ? "Ubah Catatan Harian" : "Catatan Harian Baru"}</h2>
           <span className="text-xs text-zinc-500">{dateStr}</span>
         </div>
         <DailyForm
@@ -312,9 +312,9 @@ async function DailyEditor({
           matiAfkirLocked={Boolean(existing)}
           lockNote={
             existing
-              ? "MATI/AFKIR are frozen once recorded (write-once HIDUP)."
+              ? "MATI/AFKIR dikunci setelah tercatat (HIDUP sekali tulis)."
               : isChickInDay
-                ? "Chick-in day: arrival-day MATI/AFKIR net off Populasi Awal."
+                ? "Hari Chick-in: MATI/AFKIR hari kedatangan mengurangi Populasi Awal."
                 : undefined
           }
         />

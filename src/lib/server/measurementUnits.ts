@@ -19,7 +19,7 @@ export async function createMeasurementUnit(input: {
 }) {
   const existing = await prisma.measurementUnit.findUnique({ where: { name: input.name } });
   if (existing) {
-    throw new ConflictError(`Measurement unit "${input.name}" already exists.`);
+    throw new ConflictError(`Satuan "${input.name}" sudah ada.`);
   }
   return prisma.measurementUnit.create({
     data: {
@@ -34,7 +34,7 @@ export async function createMeasurementUnit(input: {
 export async function setMeasurementUnitStatus(id: string, status: RecordStatus) {
   const existing = await prisma.measurementUnit.findUnique({ where: { id } });
   if (!existing) {
-    throw new NotFoundError("Measurement unit not found.");
+    throw new NotFoundError("Satuan tidak ditemukan.");
   }
   return prisma.measurementUnit.update({ where: { id }, data: { status } });
 }

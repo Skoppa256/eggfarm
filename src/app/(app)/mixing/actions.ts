@@ -30,7 +30,7 @@ function readLines(formData: FormData): MixLineInput[] | { error: string } {
     }
   }
   if (lines.length === 0) {
-    return { error: "Add at least one main feed to the recipe." };
+    return { error: "Tambahkan minimal satu PAKAN utama ke resep." };
   }
   return lines;
 }
@@ -48,7 +48,7 @@ export async function createMixingAction(
     projectedIntake: formData.get("projectedIntake"),
   });
   if (!key.success) {
-    return { ok: false, error: key.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: key.error.issues[0]?.message ?? "Input tidak valid." };
   }
   const lines = readLines(formData);
   if ("error" in lines) return { ok: false, error: lines.error };
@@ -68,7 +68,7 @@ export async function createMixingAction(
     revalidatePath("/ingredients");
     return {
       ok: true,
-      message: `Mixed: PAKAN MASUK ${mix.totalCampur.toFixed(3)} kg — ${mix.jenis || "no fresh mix"}.`,
+      message: `Mixing selesai: PAKAN MASUK ${mix.totalCampur.toFixed(3)} kg — ${mix.jenis || "tidak ada campuran baru"}.`,
     };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };

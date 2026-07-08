@@ -90,11 +90,11 @@ export async function mixingPlan(farmhouseId: string, date: Date, projectedIntak
 
 async function normalizeLines(lines: MixLineInput[], totalCampur: number): Promise<NormalizedLine[]> {
   if (lines.length === 0) {
-    throw new ConflictError("Add at least one main feed to the recipe.");
+    throw new ConflictError("Tambahkan minimal satu pakan utama ke resep.");
   }
   const ids = lines.map((l) => l.ingredientId);
   if (new Set(ids).size !== ids.length) {
-    throw new ConflictError("An ingredient appears more than once in the recipe.");
+    throw new ConflictError("Sebuah bahan muncul lebih dari sekali dalam resep.");
   }
   const ingredients = await prisma.ingredient.findMany({ where: { id: { in: ids } } });
   const byId = new Map(ingredients.map((i) => [i.id, i]));
@@ -104,16 +104,16 @@ async function normalizeLines(lines: MixLineInput[], totalCampur: number): Promi
   const out: NormalizedLine[] = [];
   for (const line of lines) {
     const ing = byId.get(line.ingredientId);
-    if (!ing) throw new NotFoundError("Recipe references an unknown ingredient.");
+    if (!ing) throw new NotFoundError("Resep merujuk ke bahan yang tidak dikenal.");
     if (ing.status !== RecordStatus.ACTIVE) {
-      throw new ConflictError(`Ingredient "${ing.name}" is not active.`);
+      throw new ConflictError(`Bahan "${ing.name}" tidak aktif.`);
     }
     const jenis: JenisEntry = { name: ing.name, category: ing.category, sortOrder: ing.sortOrder };
 
     if (line.kind === MixLineKind.MAIN_PERCENT) {
       const percent = line.percent ?? 0;
       if (!Number.isFinite(percent) || percent <= 0) {
-        throw new ConflictError(`Main feed "${ing.name}" needs a percentage greater than 0.`);
+        throw new ConflictError(`Pakan utama "${ing.name}" butuh persentase lebih besar dari 0.`);
       }
       mainCount += 1;
       percentSum += percent;
@@ -129,7 +129,7 @@ async function normalizeLines(lines: MixLineInput[], totalCampur: number): Promi
     } else {
       const fixed = line.fixedWeight ?? 0;
       if (!Number.isFinite(fixed) || fixed <= 0) {
-        throw new ConflictError(`Supplement "${ing.name}" needs a fixed weight greater than 0.`);
+        throw new ConflictError(`Suplemen "${ing.name}" butuh berat tetap lebih besar dari 0.`);
       }
       out.push({
         ingredientId: ing.id,
@@ -143,10 +143,10 @@ async function normalizeLines(lines: MixLineInput[], totalCampur: number): Promi
   }
 
   if (mainCount === 0) {
-    throw new ConflictError("A recipe needs at least one main feed (by %).");
+    throw new ConflictError("Resep butuh minimal satu pakan utama (dengan %).");
   }
   if (Math.abs(percentSum - 100) > PERCENT_TOLERANCE) {
-    throw new ConflictError(`Main feed percentages must sum to 100% (they sum to ${percentSum}%).`);
+    throw new ConflictError(`Persentase pakan utama harus berjumlah 100% (saat ini ${percentSum}%).`);
   }
   return out;
 }
@@ -160,12 +160,12 @@ async function normalizeLines(lines: MixLineInput[], totalCampur: number): Promi
 export async function createMixing(key: MixingKey, lines: MixLineInput[], ctx: Ctx) {
   const date = toBusinessDate(key.date);
   if (!Number.isFinite(key.projectedIntake) || key.projectedIntake <= 0) {
-    throw new ConflictError("Projected intake (g/bird) must be greater than 0.");
+    throw new ConflictError("Proyeksi intake (g/ekor) harus lebih besar dari 0.");
   }
 
   const placement = await resolvePlacementForDate(key.farmhouseId, date);
   if (!placement) {
-    throw new ConflictError("No placement occupies this kandang on that date — chick-in a flock first.");
+    throw new ConflictError("Belum ada penempatan di kandang ini pada tanggal itu — lakukan chick-in flock dulu.");
   }
   const hidup = (await resolveHidup(placement.id, date)) ?? placement.populasiAwal;
   const reusableLeftover = await previousReusableLeftover(placement.id, date);
@@ -180,7 +180,7 @@ export async function createMixing(key: MixingKey, lines: MixLineInput[], ctx: C
       where: { farmhouseId_date: { farmhouseId: key.farmhouseId, date } },
     });
     if (dup) {
-      throw new ConflictError("This kandang already has a mix for that day.");
+      throw new ConflictError("Kandang ini sudah punya campuran untuk hari itu.");
     }
 
     const mix = await tx.mixingRecord.create({

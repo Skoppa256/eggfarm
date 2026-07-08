@@ -42,8 +42,8 @@ export default async function GradingPage({
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Grading</h1>
         <p className="text-sm text-zinc-500">
-          Grade each batch by Type × Size &amp; Health. Sequential: batch N needs N−1 submitted.
-          Submitting posts every graded SKU to the warehouse.
+          Grading tiap batch per Tipe × Ukuran &amp; Kesehatan. Berurutan: batch N butuh N−1 sudah dikirim.
+          Mengirim akan memposting setiap SKU hasil Grading ke Gudang.
         </p>
       </header>
 
@@ -54,7 +54,7 @@ export default async function GradingPage({
         <label className="flex flex-col gap-1 text-sm font-medium">
           Kandang
           <select name="farmhouseId" defaultValue={farmhouseId ?? ""} className={fieldClass}>
-            <option value="">Select…</option>
+            <option value="">Pilih…</option>
             {farmhouses.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name} ({f.code})
@@ -63,21 +63,21 @@ export default async function GradingPage({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          Business date
+          Tanggal
           <input type="date" name="date" defaultValue={dateStr} className={fieldClass} />
         </label>
         <button
           type="submit"
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Load
+          Muat
         </button>
       </form>
 
       {farmhouseId ? (
         <BatchGrading farmhouseId={farmhouseId} dateStr={dateStr} gradeTypes={gradeTypes} />
       ) : (
-        <p className="text-sm text-zinc-500">Choose a kandang and date, then Load.</p>
+        <p className="text-sm text-zinc-500">Pilih kandang dan tanggal, lalu Muat.</p>
       )}
     </main>
   );
@@ -103,14 +103,14 @@ async function BatchGrading({
   if (!warehouseId) {
     return (
       <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        This kandang has no warehouse mapping for {dateStr}.
+        Kandang ini belum memiliki pemetaan Gudang untuk {dateStr}.
       </p>
     );
   }
   if (maxBatches == null) {
     return (
       <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-        This kandang has no batch configuration for {dateStr}.
+        Kandang ini belum memiliki konfigurasi batch untuk {dateStr}.
       </p>
     );
   }
@@ -121,7 +121,7 @@ async function BatchGrading({
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold">
-        Grading for {dateStr} <span className="text-sm font-normal text-zinc-500">(max {maxBatches})</span>
+        Grading untuk {dateStr} <span className="text-sm font-normal text-zinc-500">(maks {maxBatches})</span>
       </h2>
       {Array.from({ length: maxBatches }, (_, i) => i + 1).map((batch) => {
         const collection = collectionByBatch.get(batch);
@@ -142,17 +142,17 @@ async function BatchGrading({
                       : "bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
                 }`}
               >
-                {status === "NONE" ? "Not started" : status}
+                {status === "NONE" ? "Belum dimulai" : status}
               </span>
             </div>
 
             {!collection ? (
               <p className="text-sm text-amber-700 dark:text-amber-300">
-                No collection recorded for this batch — record it first.
+                Belum ada Pengambilan tercatat untuk batch ini — catat dulu.
               </p>
             ) : !prevSubmitted ? (
               <p className="text-sm text-amber-700 dark:text-amber-300">
-                Locked — submit batch {batch - 1} first.
+                Terkunci — kirim batch {batch - 1} dulu.
               </p>
             ) : (
               <GradingForm

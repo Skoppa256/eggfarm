@@ -49,10 +49,10 @@ export function MixingForm({
         <table className="w-full text-left text-sm">
           <thead className="text-xs uppercase tracking-wide text-zinc-500">
             <tr>
-              <th className="py-1 pr-2">Ingredient</th>
-              <th className="py-1 pr-2">Kind</th>
+              <th className="py-1 pr-2">Bahan</th>
+              <th className="py-1 pr-2">Jenis</th>
               <th className="py-1 pr-2">% / kg</th>
-              <th className="py-1 pr-2 text-right">Weight (kg)</th>
+              <th className="py-1 pr-2 text-right">Berat (kg)</th>
             </tr>
           </thead>
           <tbody>
@@ -65,7 +65,7 @@ export function MixingForm({
                     onChange={(e) => update(i, { ingredientId: e.target.value })}
                     className={fieldClass}
                   >
-                    <option value="">Select…</option>
+                    <option value="">Pilih…</option>
                     {ingredients.map((ing) => (
                       <option key={ing.id} value={ing.id}>
                         {ing.name}
@@ -80,8 +80,8 @@ export function MixingForm({
                     onChange={(e) => update(i, { kind: e.target.value as Row["kind"] })}
                     className={fieldClass}
                   >
-                    <option value="MAIN_PERCENT">Main (%)</option>
-                    <option value="FIXED_WEIGHT">Fixed (kg)</option>
+                    <option value="MAIN_PERCENT">Utama (%)</option>
+                    <option value="FIXED_WEIGHT">Tetap (kg)</option>
                   </select>
                 </td>
                 <td className="py-1 pr-2">
@@ -120,10 +120,10 @@ export function MixingForm({
           onClick={() => setRows((rs) => [...rs, blankRow()])}
           className="rounded border border-zinc-300 px-2 py-1 font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
         >
-          + Add line
+          + Tambah baris
         </button>
         <span className={Math.abs(mainsPercent - 100) < 0.01 ? "text-emerald-600" : "text-amber-600"}>
-          Mains total: {mainsPercent}% {Math.abs(mainsPercent - 100) < 0.01 ? "✓" : "(must be 100%)"}
+          Total utama: {mainsPercent}% {Math.abs(mainsPercent - 100) < 0.01 ? "✓" : "(harus 100%)"}
         </span>
       </div>
 
@@ -133,7 +133,7 @@ export function MixingForm({
           disabled={pending}
           className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          Confirm mix &amp; draw down stock
+          Konfirmasi mix &amp; kurangi stok
         </button>
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">

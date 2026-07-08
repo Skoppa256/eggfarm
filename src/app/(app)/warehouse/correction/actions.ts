@@ -25,7 +25,7 @@ export async function correctionAction(
     reference: formData.get("reference") ?? undefined,
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   const { warehouseId, sizeHealthGrade, typeGradeId, mode, value, reason, reference } = parsed.data;
 
@@ -44,7 +44,7 @@ export async function correctionAction(
     revalidatePath("/warehouse/audit");
     return {
       ok: true,
-      message: `Corrected to ${movement.postQuantity} pcs (was ${movement.preQuantity}).`,
+      message: `Dikoreksi menjadi ${movement.postQuantity} pcs (sebelumnya ${movement.preQuantity}).`,
     };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };

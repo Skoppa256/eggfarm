@@ -38,7 +38,7 @@ export function OvkEntryForm({
           onChange={(e) => setItemId(e.target.value)}
           className={fieldClass}
         >
-          <option value="">Select…</option>
+          <option value="">Pilih…</option>
           {items.map((i) => (
             <option key={i.id} value={i.id}>
               {i.name}
@@ -47,11 +47,11 @@ export function OvkEntryForm({
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Quantity
+        Jumlah
         <input type="number" name="quantity" min="0.001" step="0.001" required className={`${fieldClass} w-28`} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Unit
+        Satuan
         <select name="unitName" required className={fieldClass} disabled={units.length === 0}>
           {units.length === 0 && <option value="">—</option>}
           {units.map((u) => (
@@ -67,7 +67,7 @@ export function OvkEntryForm({
           <label className="flex flex-col gap-1 text-sm font-medium">
             Kandang
             <select name="farmhouseId" required className={fieldClass}>
-              <option value="">Select…</option>
+              <option value="">Pilih…</option>
               {(kandangs ?? []).map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.name} ({k.code})
@@ -76,14 +76,14 @@ export function OvkEntryForm({
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Note
-            <input name="note" className={fieldClass} placeholder="optional" />
+            Catatan
+            <input name="note" className={fieldClass} placeholder="opsional" />
           </label>
         </>
       )}
 
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Date
+        Tanggal
         <input type="date" name="date" defaultValue={today} className={fieldClass} />
       </label>
       <button
@@ -91,7 +91,7 @@ export function OvkEntryForm({
         disabled={pending}
         className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
       >
-        {mode === "delivery" ? "Record delivery" : "Record transfer"}
+        {mode === "delivery" ? "Catat Penerimaan" : "Catat Transfer"}
       </button>
       {state && !state.ok && (
         <span role="alert" className="self-center text-sm font-medium text-rose-600">

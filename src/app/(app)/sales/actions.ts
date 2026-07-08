@@ -26,7 +26,7 @@ function readLines(formData: FormData): SaleLineInput[] | { error: string } {
       unit: formData.get(`line.${i}.unit`),
     });
     if (!parsed.success) {
-      return { error: `Line ${i + 1}: ${parsed.error.issues[0]?.message ?? "invalid"}.` };
+      return { error: `Baris ${i + 1}: ${parsed.error.issues[0]?.message ?? "tidak valid"}.` };
     }
     const { sizeHealthGrade, typeGradeId, quantity, unit } = parsed.data;
     lines.push({
@@ -36,7 +36,7 @@ function readLines(formData: FormData): SaleLineInput[] | { error: string } {
       unitUsed: unit,
     });
   }
-  if (lines.length === 0) return { error: "Add at least one line with a quantity." };
+  if (lines.length === 0) return { error: "Tambahkan minimal satu baris dengan jumlah." };
   return lines;
 }
 
@@ -53,7 +53,7 @@ export async function createSaleAction(
     notes: formData.get("notes") ?? undefined,
   });
   if (!header.success) {
-    return { ok: false, error: header.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: header.error.issues[0]?.message ?? "Input tidak valid." };
   }
   const lines = readLines(formData);
   if ("error" in lines) return { ok: false, error: lines.error };
@@ -91,14 +91,14 @@ export async function voidSaleAction(
     reason: formData.get("reason"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     await voidSale(parsed.data.transactionId, parsed.data.reason, { userId: user.id });
     revalidatePath(`/sales/${parsed.data.transactionId}`);
     revalidatePath("/sales");
     revalidatePath("/warehouse");
-    return { ok: true, message: "Transaction voided; stock restored." };
+    return { ok: true, message: "Transaksi dibatalkan; stok dipulihkan." };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;

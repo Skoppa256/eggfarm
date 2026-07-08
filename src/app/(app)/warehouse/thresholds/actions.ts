@@ -23,7 +23,7 @@ export async function setThresholdAction(
     minQuantity: formData.get("minQuantity"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
 
   try {
@@ -32,7 +32,7 @@ export async function setThresholdAction(
     revalidatePath("/warehouse");
     return {
       ok: true,
-      message: parsed.data.minQuantity === 0 ? "Threshold removed." : "Threshold saved.",
+      message: parsed.data.minQuantity === 0 ? "Ambang batas dihapus." : "Ambang batas disimpan.",
     };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };

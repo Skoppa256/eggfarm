@@ -6,9 +6,9 @@ import { OvkCategory } from "@/generated/prisma/enums";
 // form rows in the create action; everything else is a fixed shape here.
 
 export const ovkItemSchema = z.object({
-  name: z.string().trim().min(1, "Item name is required.").max(120),
+  name: z.string().trim().min(1, "Nama item wajib diisi.").max(120),
   category: z.enum(OvkCategory),
-  baseUnit: z.string().trim().min(1, "Base unit is required.").max(30),
+  baseUnit: z.string().trim().min(1, "Satuan dasar wajib diisi.").max(30),
   sortOrder: z.coerce.number().int().min(0).default(0),
 });
 
@@ -18,23 +18,23 @@ export const ovkStatusSchema = z.object({
 });
 
 export const ovkDeliverySchema = z.object({
-  ovkItemId: z.string().min(1, "Choose an item."),
-  quantity: z.coerce.number().positive("Quantity must be greater than 0."),
-  unitName: z.string().min(1, "Choose a unit."),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date."),
+  ovkItemId: z.string().min(1, "Pilih item."),
+  quantity: z.coerce.number().positive("Jumlah harus lebih dari 0."),
+  unitName: z.string().min(1, "Pilih satuan."),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid."),
 });
 
 export const ovkTransferSchema = z.object({
-  ovkItemId: z.string().min(1, "Choose an item."),
-  quantity: z.coerce.number().positive("Quantity must be greater than 0."),
-  unitName: z.string().min(1, "Choose a unit."),
-  farmhouseId: z.string().min(1, "Choose a kandang."),
+  ovkItemId: z.string().min(1, "Pilih item."),
+  quantity: z.coerce.number().positive("Jumlah harus lebih dari 0."),
+  unitName: z.string().min(1, "Pilih satuan."),
+  farmhouseId: z.string().min(1, "Pilih Kandang."),
   note: z.string().trim().max(300).optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date."),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid."),
 });
 
 export const ovkCorrectionSchema = z.object({
-  ovkItemId: z.string().min(1, "Choose an item."),
-  newQuantity: z.coerce.number().min(0, "Corrected quantity cannot be negative."),
-  reason: z.string().trim().min(20, "A correction needs a reason of at least 20 characters."),
+  ovkItemId: z.string().min(1, "Pilih item."),
+  newQuantity: z.coerce.number().min(0, "Jumlah koreksi tidak boleh negatif."),
+  reason: z.string().trim().min(20, "Koreksi memerlukan alasan minimal 20 karakter."),
 });

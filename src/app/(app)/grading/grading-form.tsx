@@ -90,7 +90,7 @@ export function GradingForm({
           <thead>
             <tr className="text-xs uppercase tracking-wide text-zinc-500">
               <th className="px-2 py-1 text-left">Grade</th>
-              <th className="px-2 py-1 text-left">Unit</th>
+              <th className="px-2 py-1 text-left">Satuan</th>
               {gradeTypes.map((t) => (
                 <th key={t.id} className="px-2 py-1 text-right">
                   {t.name}
@@ -145,12 +145,12 @@ export function GradingForm({
       </div>
 
       <div className={`text-sm font-medium ${over ? "text-rose-600" : "text-zinc-600 dark:text-zinc-300"}`}>
-        Graded {formatPcs(graded)} / available {formatPcs(available)}
-        {over ? ` — over by ${graded - available} pcs` : ""}
+        Di-Grading {formatPcs(graded)} / tersedia {formatPcs(available)}
+        {over ? ` — kelebihan ${graded - available} pcs` : ""}
       </div>
 
       <label className="flex flex-col gap-1 text-xs font-medium">
-        Remarks
+        Keterangan
         <input
           name="remarks"
           defaultValue={remarks}
@@ -166,7 +166,7 @@ export function GradingForm({
             disabled={pending}
             className="rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
-            Save draft
+            Simpan draf
           </button>
         )}
         <button
@@ -175,7 +175,7 @@ export function GradingForm({
           disabled={pending}
           className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
-          {status === "SUBMITTED" ? "Update (re-submit)" : "Submit"}
+          {status === "SUBMITTED" ? "Perbarui (kirim ulang)" : "Kirim"}
         </button>
         {state && !state.ok && (
           <span role="alert" className="text-sm font-medium text-rose-600">

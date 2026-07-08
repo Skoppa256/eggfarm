@@ -28,37 +28,37 @@ export default async function FarmhousesPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-6 sm:p-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Farmhouses (Kandang)</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Kandang</h1>
         <p className="text-sm text-zinc-500">
-          Warehouse mapping and batch count are effective-dated; batch changes take effect the next
-          day.
+          Pemetaan gudang dan jumlah batch bersifat efektif-tanggal; perubahan batch berlaku pada
+          hari berikutnya.
         </p>
       </header>
 
       <section className="rounded-lg border border-zinc-200 p-5 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">Add a farmhouse</h2>
+        <h2 className="mb-4 text-lg font-semibold">Tambah Kandang</h2>
         <FarmhouseCreateForm warehouses={warehouses} />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">All farmhouses</h2>
+        <h2 className="mb-3 text-lg font-semibold">Semua Kandang</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
               <tr>
-                <th className="px-4 py-2">Code</th>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Warehouse (today)</th>
-                <th className="px-4 py-2">Max batches (today)</th>
+                <th className="px-4 py-2">Kode</th>
+                <th className="px-4 py-2">Nama</th>
+                <th className="px-4 py-2">Gudang (hari ini)</th>
+                <th className="px-4 py-2">Maks batch (hari ini)</th>
                 <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2 text-right">Actions</th>
+                <th className="px-4 py-2 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {farmhouses.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-4 text-zinc-500">
-                    No farmhouses yet.
+                    Belum ada Kandang.
                   </td>
                 </tr>
               )}
@@ -84,7 +84,7 @@ export default async function FarmhousesPage() {
                           ))}
                         </select>
                         <button type="submit" className={btnClass}>
-                          Re-map
+                          Petakan ulang
                         </button>
                       </form>
                     </td>
@@ -102,8 +102,8 @@ export default async function FarmhousesPage() {
                           defaultValue={currentBatches ?? 2}
                           className={`${inputClass} w-16`}
                         />
-                        <button type="submit" className={btnClass} title="Takes effect tomorrow">
-                          Set (next day)
+                        <button type="submit" className={btnClass} title="Berlaku besok">
+                          Simpan (hari berikutnya)
                         </button>
                       </form>
                     </td>
@@ -123,7 +123,7 @@ export default async function FarmhousesPage() {
                         <input type="hidden" name="id" value={f.id} />
                         <input type="hidden" name="status" value={active ? "INACTIVE" : "ACTIVE"} />
                         <button type="submit" className={btnClass}>
-                          {active ? "Deactivate" : "Reactivate"}
+                          {active ? "Nonaktifkan" : "Aktifkan"}
                         </button>
                       </form>
                     </td>

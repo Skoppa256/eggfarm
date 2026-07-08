@@ -21,12 +21,12 @@ export async function createWarehouseAction(
     code: formData.get("code"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
   try {
     const warehouse = await createWarehouse(parsed.data);
     revalidatePath(PATH);
-    return { ok: true, message: `Created warehouse ${warehouse.code}.` };
+    return { ok: true, message: `Gudang ${warehouse.code} dibuat.` };
   } catch (err) {
     if (err instanceof AppError) return { ok: false, error: err.message };
     throw err;
@@ -40,7 +40,7 @@ export async function setWarehouseStatusAction(formData: FormData): Promise<void
     status: formData.get("status"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
   await setWarehouseStatus(
     parsed.data.id,

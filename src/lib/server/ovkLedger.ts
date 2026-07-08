@@ -80,7 +80,7 @@ async function loadItem(ovkItemId: string) {
     where: { id: ovkItemId },
     include: { unitConversions: true },
   });
-  if (!item) throw new NotFoundError("OVK item not found.");
+  if (!item) throw new NotFoundError("Item OVK tidak ditemukan.");
   return item;
 }
 
@@ -96,7 +96,7 @@ function toBase(
     item.unitConversions.map((c) => ({ unitName: c.unitName, factorToBase: c.factorToBase.toNumber() })),
   );
   if (factor == null) {
-    throw new ConflictError(`Unit "${unitName}" is not defined for ${item.name}.`);
+    throw new ConflictError(`Satuan "${unitName}" tidak terdefinisi untuk ${item.name}.`);
   }
   return round3(quantity * factor);
 }
@@ -112,7 +112,7 @@ export interface OvkEntry {
 /** Record an OVK delivery to the office (stock IN) — Admin (FR-92). */
 export async function recordOvkDelivery(input: OvkEntry) {
   if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
-    throw new ConflictError("Delivery quantity must be greater than 0.");
+    throw new ConflictError("Jumlah penerimaan harus lebih dari 0.");
   }
   const item = await loadItem(input.ovkItemId);
   const base = toBase(item, input.quantity, input.unitName);
@@ -137,7 +137,7 @@ export async function recordOvkDelivery(input: OvkEntry) {
  */
 export async function recordOvkTransfer(input: OvkEntry & { farmhouseId: string; note?: string | null }) {
   if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
-    throw new ConflictError("Transfer quantity must be greater than 0.");
+    throw new ConflictError("Jumlah transfer harus lebih dari 0.");
   }
   const item = await loadItem(input.ovkItemId);
   const base = toBase(item, input.quantity, input.unitName);
@@ -182,11 +182,11 @@ export async function recordOvkCorrection(input: OvkCorrectionInput) {
   const reason = input.reason.trim();
   if (reason.length < OVK_CORRECTION_MIN_REASON) {
     throw new ConflictError(
-      `A correction needs a reason of at least ${OVK_CORRECTION_MIN_REASON} characters.`,
+      `Koreksi memerlukan alasan minimal ${OVK_CORRECTION_MIN_REASON} karakter.`,
     );
   }
   if (!Number.isFinite(input.newQuantity) || input.newQuantity < 0) {
-    throw new ConflictError("Corrected quantity must be a non-negative number.");
+    throw new ConflictError("Jumlah terkoreksi harus bilangan non-negatif.");
   }
   const item = await loadItem(input.ovkItemId);
   const target = toDec(round3(input.newQuantity));
@@ -196,7 +196,7 @@ export async function recordOvkCorrection(input: OvkCorrectionInput) {
         tx,
         input.ovkItemId,
         async (pre) => {
-          if (target.equals(pre)) throw new ConflictError("Correction must change the balance.");
+          if (target.equals(pre)) throw new ConflictError("Koreksi harus mengubah saldo.");
           return target;
         },
         {

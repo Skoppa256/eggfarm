@@ -26,13 +26,13 @@ export async function createUserAction(
     role: formData.get("role"),
   });
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid." };
   }
 
   try {
     const user = await createUser(parsed.data);
     revalidatePath("/users");
-    return { ok: true, message: `Created ${user.username} (${user.role}).` };
+    return { ok: true, message: `${user.username} (${user.role}) dibuat.` };
   } catch (err) {
     if (err instanceof AppError) {
       return { ok: false, error: err.message };
@@ -49,7 +49,7 @@ export async function setUserStatusAction(formData: FormData): Promise<void> {
     status: formData.get("status"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid input.");
+    throw new Error(parsed.error.issues[0]?.message ?? "Input tidak valid.");
   }
 
   await setUserStatus(

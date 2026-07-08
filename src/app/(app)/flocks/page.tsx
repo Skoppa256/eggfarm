@@ -18,15 +18,15 @@ export default async function FlocksPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-6 sm:p-8">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Flocks</h1>
-          <p className="text-sm text-zinc-500">Chick-in deliveries and their placements.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Flock</h1>
+          <p className="text-sm text-zinc-500">Pengiriman Chick-in dan penempatannya.</p>
         </div>
         {isSuperadmin && (
           <Link
             href="/flocks/new"
             className="rounded bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
           >
-            New chick-in
+            Chick-in Baru
           </Link>
         )}
       </header>
@@ -37,7 +37,7 @@ export default async function FlocksPage() {
             <tr>
               <th className="px-4 py-2">Strain</th>
               <th className="px-4 py-2">Chick-in</th>
-              <th className="px-4 py-2 text-right">Age (d)</th>
+              <th className="px-4 py-2 text-right">Umur (hari)</th>
               <th className="px-4 py-2">Kandang</th>
               <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2 text-right"></th>
@@ -47,7 +47,7 @@ export default async function FlocksPage() {
             {flocks.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-4 text-zinc-500">
-                  No flocks yet.
+                  Belum ada flock.
                 </td>
               </tr>
             )}
@@ -72,7 +72,7 @@ export default async function FlocksPage() {
                 </td>
                 <td className="px-4 py-2 text-right">
                   <Link href={`/flocks/${f.id}`} className="text-xs font-medium text-zinc-600 underline dark:text-zinc-300">
-                    View
+                    Lihat
                   </Link>
                 </td>
               </tr>

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "EggFarm IMS",
-  description: "Inventory management for CV Piawai Djaya Farm",
+  description: "Manajemen inventaris untuk CV Piawai Djaya Farm",
 };
 
 export default function RootLayout({

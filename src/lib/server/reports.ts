@@ -280,7 +280,7 @@ export async function dailyCollectionReport(f: ReportFilters): Promise<ReportRes
   });
   return {
     columns: [
-      { label: "Kandang" }, { label: "Batch", numeric: true }, { label: "Good", numeric: true },
+      { label: "Kandang" }, { label: "Batch", numeric: true }, { label: "Bagus", numeric: true },
       { label: "Retak", numeric: true }, { label: "Lunak", numeric: true }, { label: "Kosong", numeric: true },
       { label: "Angkat Rak", numeric: true },
     ],
@@ -302,8 +302,8 @@ export async function crackedRateReport(f: ReportFilters): Promise<ReportResult>
   const names = await farmhouseNames();
   return {
     columns: [
-      { label: "Kandang" }, { label: "Total collected", numeric: true }, { label: "Retak + Lunak", numeric: true },
-      { label: "Cracked %", numeric: true },
+      { label: "Kandang" }, { label: "Total terkumpul", numeric: true }, { label: "Retak + Lunak", numeric: true },
+      { label: "Retak %", numeric: true },
     ],
     rows: grouped
       .map((g) => {
@@ -346,7 +346,7 @@ export async function gradeDistributionReport(f: ReportFilters): Promise<ReportR
   });
   const tn = await typeNames();
   return {
-    columns: [{ label: "Grade" }, { label: "Type" }, { label: "Pcs", numeric: true }, { label: "Rak + pcs" }],
+    columns: [{ label: "Grade" }, { label: "Tipe" }, { label: "Pcs", numeric: true }, { label: "Rak + pcs" }],
     rows: grouped
       .map((g) => [
         gradeLabel(g.sizeHealthGrade as SizeHealthGrade), tn.get(g.typeGradeId) ?? g.typeGradeId,
@@ -370,7 +370,7 @@ export async function angkatRakReport(f: ReportFilters): Promise<ReportResult> {
     agg.set(key, (agg.get(key) ?? 0) + l.quantity);
   }
   return {
-    columns: [{ label: "Kandang" }, { label: "Type" }, { label: "Angkat Rak (pcs)", numeric: true }, { label: "Rak + pcs" }],
+    columns: [{ label: "Kandang" }, { label: "Tipe" }, { label: "Angkat Rak (pcs)", numeric: true }, { label: "Rak + pcs" }],
     rows: [...agg.entries()]
       .map(([key, qty]) => {
         const [fid, type] = key.split("|");
@@ -389,7 +389,7 @@ export async function warehouseStockReport(f: ReportFilters): Promise<ReportResu
   });
   return {
     columns: [
-      { label: "Warehouse" }, { label: "Grade" }, { label: "Type" }, { label: "Pcs", numeric: true }, { label: "Rak + pcs" },
+      { label: "Gudang" }, { label: "Grade" }, { label: "Tipe" }, { label: "Pcs", numeric: true }, { label: "Rak + pcs" },
     ],
     rows: rows.map((r) => [
       r.warehouse.code, gradeLabel(r.sizeHealthGrade as SizeHealthGrade), r.gradeType.name,
@@ -408,7 +408,7 @@ export async function kandangComparisonReport(f: ReportFilters): Promise<ReportR
   });
   const names = await farmhouseNames();
   return {
-    columns: [{ label: "Kandang" }, { label: "Good Eggs", numeric: true }, { label: "Total collected", numeric: true }],
+    columns: [{ label: "Kandang" }, { label: "Telur Bagus", numeric: true }, { label: "Total terkumpul", numeric: true }],
     rows: grouped
       .map((g) => {
         const total = num(g._sum.goodEggs) + num(g._sum.telurRetak) + num(g._sum.telurLunak) + num(g._sum.telurKosong);
@@ -453,7 +453,7 @@ export async function buyerDailySalesReport(f: ReportFilters): Promise<ReportRes
     }
   }
   return {
-    columns: [{ label: "Buyer" }, { label: "Grade" }, { label: "Type" }, { label: "Pcs", numeric: true }, { label: "Rak + pcs" }],
+    columns: [{ label: "Pembeli" }, { label: "Grade" }, { label: "Tipe" }, { label: "Pcs", numeric: true }, { label: "Rak + pcs" }],
     rows,
   };
 }
@@ -469,7 +469,7 @@ export async function buyerWeeklySalesReport(f: ReportFilters): Promise<ReportRe
   const agg = new Map<string, number>();
   for (const t of txns) agg.set(t.buyer.name, (agg.get(t.buyer.name) ?? 0) + t.lineItems.reduce((s, l) => s + l.quantity, 0));
   return {
-    columns: [{ label: "Buyer" }, { label: "Pcs", numeric: true }, { label: "Rak + pcs" }],
+    columns: [{ label: "Pembeli" }, { label: "Pcs", numeric: true }, { label: "Rak + pcs" }],
     rows: [...agg.entries()].map(([name, q]) => [name, q, formatPcs(q)]).sort((a, b) => Number(b[1]) - Number(a[1])),
   };
 }
@@ -484,7 +484,7 @@ export async function dailyFarmhouseRecordReport(f: ReportFilters): Promise<Repo
   });
   return {
     columns: [
-      { label: "Date" }, { label: "Kandang" }, { label: "HARI", numeric: true }, { label: "MINGGU", numeric: true },
+      { label: "Tanggal" }, { label: "Kandang" }, { label: "HARI", numeric: true }, { label: "MINGGU", numeric: true },
       { label: "HIDUP", numeric: true }, { label: "MATI", numeric: true }, { label: "AFKIR", numeric: true },
       { label: "HD%", numeric: true }, { label: "MASUK kg", numeric: true }, { label: "INTAKE kg", numeric: true },
       { label: "FCR", numeric: true },
@@ -511,8 +511,8 @@ export async function flockProductionHealthReport(f: ReportFilters): Promise<Rep
   const cum = new Map<string, number>();
   return {
     columns: [
-      { label: "Date" }, { label: "Kandang" }, { label: "HIDUP", numeric: true }, { label: "HD%", numeric: true },
-      { label: "FCR", numeric: true }, { label: "Cumulative MATI+AFKIR", numeric: true },
+      { label: "Tanggal" }, { label: "Kandang" }, { label: "HIDUP", numeric: true }, { label: "HD%", numeric: true },
+      { label: "FCR", numeric: true }, { label: "Kumulatif MATI+AFKIR", numeric: true },
     ],
     rows: rows.map((r) => {
       const c = (cum.get(r.placementId) ?? 0) + r.mati + r.afkir;
@@ -532,7 +532,7 @@ export async function feedConsumptionReport(f: ReportFilters): Promise<ReportRes
   });
   return {
     columns: [
-      { label: "Date" }, { label: "Kandang" }, { label: "MASUK kg", numeric: true }, { label: "TERSEDIA kg", numeric: true },
+      { label: "Tanggal" }, { label: "Kandang" }, { label: "MASUK kg", numeric: true }, { label: "TERSEDIA kg", numeric: true },
       { label: "SISA dig. kg", numeric: true }, { label: "SISA dib. kg", numeric: true }, { label: "INTAKE kg", numeric: true },
       { label: "GRAM/EKOR", numeric: true },
     ],
@@ -550,7 +550,7 @@ export async function vaksinLogReport(f: ReportFilters): Promise<ReportResult> {
     from: f.from, to: f.to, farmhouseId: f.farmhouseId, vaksinTypeId: f.vaksinTypeId, vaccinator: f.vaccinator,
   });
   return {
-    columns: [{ label: "Date" }, { label: "Vaksin" }, { label: "Kandang" }, { label: "Vials", numeric: true }, { label: "Vaccinator" }],
+    columns: [{ label: "Tanggal" }, { label: "Vaksin" }, { label: "Kandang" }, { label: "Vial", numeric: true }, { label: "Vaksinator" }],
     rows: logs.map((l) => [iso(l.date), l.vaksinType.name, l.farmhouse.code, l.vials, l.vaccinator]),
   };
 }
@@ -559,12 +559,12 @@ export async function vaksinLogReport(f: ReportFilters): Promise<ReportResult> {
 export async function stockMovementLedgerReport(f: ReportFilters): Promise<ReportResult> {
   const first = await prisma.warehouse.findFirst({ orderBy: { code: "asc" }, select: { id: true } });
   const warehouseId = f.warehouseId ?? first?.id;
-  if (!warehouseId) return { columns: [{ label: "Warehouse" }], rows: [] };
+  if (!warehouseId) return { columns: [{ label: "Gudang" }], rows: [] };
   const moves = await getFilteredLedger({ warehouseId, from: f.from, to: f.to, typeGradeId: f.typeGradeId, limit: 500 });
   return {
     columns: [
-      { label: "Date" }, { label: "Grade" }, { label: "Type" }, { label: "Movement" }, { label: "Qty pcs", numeric: true },
-      { label: "Source" }, { label: "Reason" },
+      { label: "Tanggal" }, { label: "Grade" }, { label: "Tipe" }, { label: "Mutasi" }, { label: "Jumlah pcs", numeric: true },
+      { label: "Sumber" }, { label: "Alasan" },
     ],
     rows: moves.map((m) => [
       iso(m.date), gradeLabel(m.sizeHealthGrade as SizeHealthGrade), m.gradeType.name, m.movementType,
@@ -578,8 +578,8 @@ export async function correctionAuditReport(f: ReportFilters): Promise<ReportRes
   const corr = await listCorrections(f.warehouseId);
   return {
     columns: [
-      { label: "Date" }, { label: "Warehouse" }, { label: "Grade" }, { label: "Type" }, { label: "Pre", numeric: true },
-      { label: "Post", numeric: true }, { label: "Delta", numeric: true }, { label: "Reason" }, { label: "User" },
+      { label: "Tanggal" }, { label: "Gudang" }, { label: "Grade" }, { label: "Tipe" }, { label: "Sebelum", numeric: true },
+      { label: "Sesudah", numeric: true }, { label: "Selisih", numeric: true }, { label: "Alasan" }, { label: "Pengguna" },
     ],
     rows: corr.map((c) => [
       iso(c.date), c.warehouse.code, gradeLabel(c.sizeHealthGrade as SizeHealthGrade), c.gradeType.name,
@@ -598,7 +598,7 @@ export async function salesTransactionLogReport(f: ReportFilters): Promise<Repor
   });
   return {
     columns: [
-      { label: "Date" }, { label: "Buyer" }, { label: "Warehouse" }, { label: "Status" }, { label: "Lines", numeric: true },
+      { label: "Tanggal" }, { label: "Pembeli" }, { label: "Gudang" }, { label: "Status" }, { label: "Baris", numeric: true },
       { label: "Total pcs", numeric: true },
     ],
     rows: txns.map((t) => [
@@ -611,7 +611,7 @@ export async function salesTransactionLogReport(f: ReportFilters): Promise<Repor
 export async function feedIngredientStockReport(): Promise<ReportResult> {
   const stock = await getIngredientStock();
   return {
-    columns: [{ label: "Ingredient" }, { label: "Category" }, { label: "On hand kg", numeric: true }],
+    columns: [{ label: "Bahan Pakan" }, { label: "Kategori" }, { label: "Tersedia kg", numeric: true }],
     rows: stock.map((s) => [s.ingredient.name, s.ingredient.category, dec(s.currentQuantity)]),
   };
 }
@@ -620,7 +620,7 @@ export async function feedIngredientStockReport(): Promise<ReportResult> {
 export async function ovkStockReport(): Promise<ReportResult> {
   const stock = await getOvkStock();
   return {
-    columns: [{ label: "Item" }, { label: "Category" }, { label: "On hand" }, { label: "Unit" }],
+    columns: [{ label: "Item" }, { label: "Kategori" }, { label: "Tersedia" }, { label: "Satuan" }],
     rows: stock.map((s) => [s.ovkItem.name, s.ovkItem.category, dec(s.currentQuantity), s.ovkItem.baseUnit]),
   };
 }
@@ -630,7 +630,7 @@ export async function ovkPemakaianReportView(f: ReportFilters): Promise<ReportRe
   if (!f.farmhouseId) return { columns: [{ label: "Kandang" }], rows: [] };
   const rows = await pemakaianReport(f.farmhouseId, f.from, f.to);
   return {
-    columns: [{ label: "Date" }, { label: "Item" }, { label: "Qty out", numeric: true }, { label: "Unit" }, { label: "Note" }],
+    columns: [{ label: "Tanggal" }, { label: "Item" }, { label: "Jumlah keluar", numeric: true }, { label: "Satuan" }, { label: "Catatan" }],
     rows: rows.map((r) => [iso(r.date), r.ovkItem.name, dec(r.enteredQuantity), r.unitUsed, r.note ?? ""]),
   };
 }
@@ -654,26 +654,26 @@ export interface ReportMeta {
 }
 
 export const REPORTS: ReportMeta[] = [
-  { slug: "daily-collection", title: "Daily Collection Summary", description: "Eggs per kandang per batch for a day.", roles: OWNER, filters: ["date", "farmhouseId"], load: dailyCollectionReport },
-  { slug: "cracked-rate", title: "Cracked Egg Rate", description: "(Retak + Lunak) / total collected, per kandang.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: crackedRateReport },
-  { slug: "telur-kosong", title: "Telur Kosong", description: "Empty-shell totals per kandang (hen-productivity).", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: telurKosongReport },
-  { slug: "grade-distribution", title: "Grade Distribution", description: "Volume per Size & Health grade × Type.", roles: OWNER, filters: ["from", "to", "typeGradeId"], load: gradeDistributionReport },
-  { slug: "angkat-rak", title: "Angkat Rak", description: "Angkat Rak volume per kandang × Type.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: angkatRakReport },
-  { slug: "warehouse-stock", title: "Warehouse Stock", description: "Current stock per warehouse × Egg SKU (rak + pcs).", roles: OWNER, filters: ["warehouseId"], load: warehouseStockReport },
-  { slug: "kandang-comparison", title: "Kandang Comparison", description: "Production side-by-side across kandang.", roles: OWNER, filters: ["from", "to"], load: kandangComparisonReport },
-  { slug: "grading-completion", title: "Grading Completion", description: "Which batches are graded vs pending for a day.", roles: OWNER, filters: ["date"], load: gradingCompletionReport },
-  { slug: "buyer-daily-sales", title: "Buyer Daily Sales", description: "Per buyer × SKU for a day.", roles: OWNER, filters: ["date", "buyerId"], load: buyerDailySalesReport },
-  { slug: "buyer-weekly-sales", title: "Buyer Weekly Sales", description: "Per-buyer totals over a period.", roles: OWNER, filters: ["from", "to"], load: buyerWeeklySalesReport },
-  { slug: "daily-farmhouse-record", title: "Daily Farmhouse Record", description: "Per kandang per day: HARI/HIDUP/HD%/feed/FCR.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: dailyFarmhouseRecordReport },
-  { slug: "flock-production-health", title: "Flock Production & Health", description: "HD%/FCR + cumulative mortality per kandang.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: flockProductionHealthReport },
-  { slug: "feed-consumption", title: "Feed Consumption", description: "PAKAN MASUK/TERSEDIA/SISA/INTAKE/gram-ekor.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: feedConsumptionReport },
-  { slug: "vaksin-log", title: "Vaksin Log", description: "Vaccination activity, filterable.", roles: OWNER, filters: ["from", "to", "farmhouseId", "vaksinTypeId", "vaccinator"], load: vaksinLogReport },
-  { slug: "stock-movement-ledger", title: "Stock Movement Ledger", description: "Full in/out log per warehouse; corrections flagged.", roles: OPS, filters: ["warehouseId", "from", "to", "typeGradeId"], load: stockMovementLedgerReport },
-  { slug: "sales-transaction-log", title: "Sales Transaction Log", description: "All transactions; voided marked.", roles: OPS, filters: ["from", "to", "buyerId", "warehouseId"], load: salesTransactionLogReport },
-  { slug: "feed-ingredient-stock", title: "Feed Ingredient Stock", description: "Central ingredient stock on hand.", roles: OPS, filters: [], load: feedIngredientStockReport },
-  { slug: "ovk-stock", title: "OVK Stock", description: "Current office stock per OVK item.", roles: OPS, filters: [], load: ovkStockReport },
-  { slug: "ovk-pemakaian", title: "OVK Usage (Pemakaian)", description: "Office→kandang transfers per kandang.", roles: OPS, filters: ["farmhouseId", "from", "to"], load: ovkPemakaianReportView },
-  { slug: "correction-audit", title: "Stock Correction Audit", description: "All corrections: pre/post, delta, reason, user.", roles: SA, filters: ["warehouseId"], load: correctionAuditReport },
+  { slug: "daily-collection", title: "Ringkasan Pengambilan Harian", description: "Telur per kandang per batch untuk satu hari.", roles: OWNER, filters: ["date", "farmhouseId"], load: dailyCollectionReport },
+  { slug: "cracked-rate", title: "Tingkat Telur Retak", description: "(Retak + Lunak) / total terkumpul, per kandang.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: crackedRateReport },
+  { slug: "telur-kosong", title: "Telur Kosong", description: "Total cangkang kosong per kandang (produktivitas ayam).", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: telurKosongReport },
+  { slug: "grade-distribution", title: "Distribusi Grade", description: "Volume per grade Size & Health × Tipe.", roles: OWNER, filters: ["from", "to", "typeGradeId"], load: gradeDistributionReport },
+  { slug: "angkat-rak", title: "Angkat Rak", description: "Volume Angkat Rak per kandang × Tipe.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: angkatRakReport },
+  { slug: "warehouse-stock", title: "Stok Gudang", description: "Stok terkini per gudang × SKU Telur (rak + pcs).", roles: OWNER, filters: ["warehouseId"], load: warehouseStockReport },
+  { slug: "kandang-comparison", title: "Perbandingan Kandang", description: "Produksi berdampingan antar kandang.", roles: OWNER, filters: ["from", "to"], load: kandangComparisonReport },
+  { slug: "grading-completion", title: "Penyelesaian Grading", description: "Batch mana yang sudah di-grading vs tertunda untuk satu hari.", roles: OWNER, filters: ["date"], load: gradingCompletionReport },
+  { slug: "buyer-daily-sales", title: "Penjualan Harian Pembeli", description: "Per pembeli × SKU untuk satu hari.", roles: OWNER, filters: ["date", "buyerId"], load: buyerDailySalesReport },
+  { slug: "buyer-weekly-sales", title: "Penjualan Mingguan Pembeli", description: "Total per pembeli dalam satu periode.", roles: OWNER, filters: ["from", "to"], load: buyerWeeklySalesReport },
+  { slug: "daily-farmhouse-record", title: "Catatan Kandang Harian", description: "Per kandang per hari: HARI/HIDUP/HD%/pakan/FCR.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: dailyFarmhouseRecordReport },
+  { slug: "flock-production-health", title: "Produksi & Kesehatan Flock", description: "HD%/FCR + kematian kumulatif per kandang.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: flockProductionHealthReport },
+  { slug: "feed-consumption", title: "Konsumsi Pakan", description: "PAKAN MASUK/TERSEDIA/SISA/INTAKE/gram-ekor.", roles: OWNER, filters: ["from", "to", "farmhouseId"], load: feedConsumptionReport },
+  { slug: "vaksin-log", title: "Log Vaksin", description: "Aktivitas vaksinasi, dapat difilter.", roles: OWNER, filters: ["from", "to", "farmhouseId", "vaksinTypeId", "vaccinator"], load: vaksinLogReport },
+  { slug: "stock-movement-ledger", title: "Mutasi Stok", description: "Log masuk/keluar lengkap per gudang; koreksi ditandai.", roles: OPS, filters: ["warehouseId", "from", "to", "typeGradeId"], load: stockMovementLedgerReport },
+  { slug: "sales-transaction-log", title: "Log Transaksi Penjualan", description: "Semua transaksi; yang dibatalkan ditandai.", roles: OPS, filters: ["from", "to", "buyerId", "warehouseId"], load: salesTransactionLogReport },
+  { slug: "feed-ingredient-stock", title: "Stok Bahan Pakan", description: "Stok bahan pakan pusat yang tersedia.", roles: OPS, filters: [], load: feedIngredientStockReport },
+  { slug: "ovk-stock", title: "Stok OVK", description: "Stok kantor terkini per item OVK.", roles: OPS, filters: [], load: ovkStockReport },
+  { slug: "ovk-pemakaian", title: "Pemakaian OVK", description: "Transfer kantor→kandang per kandang.", roles: OPS, filters: ["farmhouseId", "from", "to"], load: ovkPemakaianReportView },
+  { slug: "correction-audit", title: "Audit Koreksi Stok", description: "Semua koreksi: sebelum/sesudah, selisih, alasan, pengguna.", roles: SA, filters: ["warehouseId"], load: correctionAuditReport },
 ];
 
 export function findReport(slug: string): ReportMeta | undefined {
