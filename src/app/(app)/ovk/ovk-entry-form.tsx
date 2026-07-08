@@ -48,7 +48,7 @@ export function OvkEntryForm({
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Jumlah
-        <input type="number" name="quantity" min="0.001" step="0.001" required className={`${fieldClass} w-28`} />
+        <input type="number" inputMode="decimal" name="quantity" min="0.001" step="0.001" required className={`${fieldClass} w-28`} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Satuan

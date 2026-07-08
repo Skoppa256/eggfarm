@@ -12,7 +12,14 @@ export function VoidForm({ transactionId }: { transactionId: string }) {
   );
 
   return (
-    <form action={action} className="flex flex-col gap-2">
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!window.confirm("Batalkan penjualan ini dan pulihkan stok? Tindakan ini permanen."))
+          e.preventDefault();
+      }}
+      className="flex flex-col gap-2"
+    >
       <input type="hidden" name="transactionId" value={transactionId} />
       <label className="flex flex-col gap-1 text-sm font-medium">
         Alasan pembatalan (wajib)

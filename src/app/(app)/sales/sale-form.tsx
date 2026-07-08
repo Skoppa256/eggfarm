@@ -106,7 +106,7 @@ export function SaleForm({
                   </select>
                 </td>
                 <td className="px-1 py-1">
-                  <input type="number" name={`line.${i}.quantity`} min={0} defaultValue={0} className={`${fieldClass} w-24`} />
+                  <input type="number" inputMode="numeric" name={`line.${i}.quantity`} min={0} defaultValue={0} className={`${fieldClass} w-24`} />
                 </td>
                 <td className="px-1 py-1">
                   <select name={`line.${i}.unit`} defaultValue="RAK" className={fieldClass}>

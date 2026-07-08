@@ -53,7 +53,7 @@ export function VaksinLogForm({
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Vial
-        <input type="number" name="vials" min={1} step={1} required className={`${fieldClass} w-24`} />
+        <input type="number" inputMode="numeric" name="vials" min={1} step={1} required className={`${fieldClass} w-24`} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Vaksinator

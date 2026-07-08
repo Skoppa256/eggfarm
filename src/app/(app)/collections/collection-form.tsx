@@ -3,10 +3,12 @@
 import { useActionState } from "react";
 
 import type { ActionResult } from "@/lib/action-result";
+
+import { FormFeedback, useDismissableFeedback } from "../form-feedback";
 import { createCollectionAction, updateCollectionAction } from "./actions";
 
 const fieldClass =
-  "rounded border border-zinc-300 px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900";
+  "rounded border border-zinc-300 px-2 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900";
 
 type TypeOption = { id: string; name: string };
 
@@ -36,9 +38,10 @@ export function CollectionForm({
 }) {
   const action = mode === "create" ? createCollectionAction : updateCollectionAction;
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(action, null);
+  const fb = useDismissableFeedback();
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} {...fb.formProps} className="flex flex-col gap-3">
       {hiddenFields.map((h) => (
         <input key={h.name} type="hidden" name={h.name} value={h.value} />
       ))}
@@ -46,19 +49,19 @@ export function CollectionForm({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-xs font-medium">
           Bagus (pcs)
-          <input type="number" name="goodEggs" min={0} defaultValue={defaults.goodEggs} className={fieldClass} />
+          <input type="number" inputMode="numeric" name="goodEggs" min={0} defaultValue={defaults.goodEggs} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           Retak (pcs)
-          <input type="number" name="telurRetak" min={0} defaultValue={defaults.telurRetak} className={fieldClass} />
+          <input type="number" inputMode="numeric" name="telurRetak" min={0} defaultValue={defaults.telurRetak} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           Lunak (pcs)
-          <input type="number" name="telurLunak" min={0} defaultValue={defaults.telurLunak} className={fieldClass} />
+          <input type="number" inputMode="numeric" name="telurLunak" min={0} defaultValue={defaults.telurLunak} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           Kosong (pcs)
-          <input type="number" name="telurKosong" min={0} defaultValue={defaults.telurKosong} className={fieldClass} />
+          <input type="number" inputMode="numeric" name="telurKosong" min={0} defaultValue={defaults.telurKosong} className={fieldClass} />
         </label>
       </div>
 
@@ -70,6 +73,7 @@ export function CollectionForm({
               {t.name}
               <input
                 type="number"
+                inputMode="numeric"
                 name={`rak_${t.id}`}
                 min={0}
                 defaultValue={defaults.liftRakByType[t.id] ?? 0}
@@ -92,24 +96,15 @@ export function CollectionForm({
         </label>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-2">
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
+          className="min-h-11 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          {mode === "create" ? "Simpan batch" : "Perbarui batch"}
+          {pending ? "Menyimpan…" : mode === "create" ? "Simpan batch" : "Perbarui batch"}
         </button>
-        {state && !state.ok && (
-          <span role="alert" className="text-sm font-medium text-rose-600">
-            {state.error}
-          </span>
-        )}
-        {state && state.ok && (
-          <span role="status" className="text-sm font-medium text-emerald-600">
-            {state.message}
-          </span>
-        )}
+        <FormFeedback state={state} dirty={fb.dirty} />
       </div>
     </form>
   );

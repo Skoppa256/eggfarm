@@ -7,6 +7,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { GRADEABLE_GRADES, gradeLabel, isPcsGrade } from "@/lib/grades";
 import { formatPcs, PCS_PER_RAK } from "@/lib/units";
 
+import { FormFeedback, useDismissableFeedback } from "../form-feedback";
 import { saveDraftAction, submitGradingAction } from "./actions";
 
 const cellClass =
@@ -62,6 +63,7 @@ export function GradingForm({
   const pending = draftPending || submitPending;
   const state = submitState ?? draftState;
   const over = graded > available;
+  const fb = useDismissableFeedback();
 
   // Default unit per grade: pcs for the inherently-pcs grades (Plastik/Lunak), or when a
   // stored quantity isn't a whole number of rak (e.g. it was entered in pcs). Otherwise rak.
@@ -78,8 +80,15 @@ export function GradingForm({
   return (
     <form
       className="flex flex-col gap-3"
-      onInput={(e) => setGraded(sumGraded(e.currentTarget))}
-      onChange={(e) => setGraded(sumGraded(e.currentTarget))}
+      onInput={(e) => {
+        setGraded(sumGraded(e.currentTarget));
+        fb.markDirty();
+      }}
+      onChange={(e) => {
+        setGraded(sumGraded(e.currentTarget));
+        fb.markDirty();
+      }}
+      onSubmit={fb.markSubmitted}
     >
       {hiddenFields.map((h) => (
         <input key={h.name} type="hidden" name={h.name} value={h.value} />
@@ -128,6 +137,7 @@ export function GradingForm({
                       <td key={t.id} className="px-1 py-1">
                         <input
                           type="number"
+                          inputMode="numeric"
                           min={0}
                           step={1}
                           name={`q:${sku}`}
@@ -158,35 +168,28 @@ export function GradingForm({
         />
       </label>
 
-      <div className="flex items-center gap-3">
-        {status !== "SUBMITTED" && (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          {status !== "SUBMITTED" && (
+            <button
+              type="submit"
+              formAction={draftAction}
+              disabled={pending}
+              className="min-h-11 rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              Simpan draf
+            </button>
+          )}
           <button
             type="submit"
-            formAction={draftAction}
+            formAction={submitAction}
             disabled={pending}
-            className="rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="min-h-11 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            Simpan draf
+            {status === "SUBMITTED" ? "Perbarui (kirim ulang)" : "Kirim"}
           </button>
-        )}
-        <button
-          type="submit"
-          formAction={submitAction}
-          disabled={pending}
-          className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {status === "SUBMITTED" ? "Perbarui (kirim ulang)" : "Kirim"}
-        </button>
-        {state && !state.ok && (
-          <span role="alert" className="text-sm font-medium text-rose-600">
-            {state.error}
-          </span>
-        )}
-        {state && state.ok && (
-          <span role="status" className="text-sm font-medium text-emerald-600">
-            {state.message}
-          </span>
-        )}
+        </div>
+        <FormFeedback state={state} dirty={fb.dirty} />
       </div>
     </form>
   );

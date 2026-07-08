@@ -4,10 +4,11 @@ import { useActionState } from "react";
 
 import type { ActionResult } from "@/lib/action-result";
 
+import { FormFeedback, useDismissableFeedback } from "../form-feedback";
 import { createDailyRecordAction, updateDailyRecordAction } from "./actions";
 
 const fieldClass =
-  "rounded border border-zinc-300 px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900";
+  "rounded border border-zinc-300 px-2 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900";
 const roClass = `${fieldClass} bg-zinc-100 text-zinc-500 dark:bg-zinc-800`;
 
 export type DailyFormDefaults = {
@@ -38,9 +39,10 @@ export function DailyForm({
 }) {
   const action = mode === "create" ? createDailyRecordAction : updateDailyRecordAction;
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(action, null);
+  const fb = useDismissableFeedback();
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} {...fb.formProps} className="flex flex-col gap-3">
       {hiddenFields.map((h) => (
         <input key={h.name} type="hidden" name={h.name} value={h.value} />
       ))}
@@ -50,6 +52,7 @@ export function DailyForm({
           MATI (ekor)
           <input
             type="number"
+            inputMode="numeric"
             name="mati"
             min={0}
             step={1}
@@ -62,6 +65,7 @@ export function DailyForm({
           AFKIR (ekor)
           <input
             type="number"
+            inputMode="numeric"
             name="afkir"
             min={0}
             step={1}
@@ -72,19 +76,19 @@ export function DailyForm({
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           SISA DIGUNAKAN (kg)
-          <input type="number" name="sisaDigunakan" min={0} step="0.001" defaultValue={defaults.sisaDigunakan} className={fieldClass} />
+          <input type="number" inputMode="decimal" name="sisaDigunakan" min={0} step="0.001" defaultValue={defaults.sisaDigunakan} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           SISA DIBUANG (kg)
-          <input type="number" name="sisaDibuang" min={0} step="0.001" defaultValue={defaults.sisaDibuang} className={fieldClass} />
+          <input type="number" inputMode="decimal" name="sisaDibuang" min={0} step="0.001" defaultValue={defaults.sisaDibuang} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           BERAT TELUR (kg)
-          <input type="number" name="beratTelur" min={0} step="0.001" defaultValue={defaults.beratTelur} className={fieldClass} />
+          <input type="number" inputMode="decimal" name="beratTelur" min={0} step="0.001" defaultValue={defaults.beratTelur} className={fieldClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           BERAT BADAN (opsional)
-          <input type="number" name="beratBadan" min={0} step="0.01" defaultValue={defaults.beratBadan} className={fieldClass} />
+          <input type="number" inputMode="decimal" name="beratBadan" min={0} step="0.01" defaultValue={defaults.beratBadan} className={fieldClass} />
         </label>
       </div>
 
@@ -105,24 +109,15 @@ export function DailyForm({
         </label>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-2">
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
+          className="min-h-11 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
         >
-          {mode === "create" ? "Simpan Catatan Harian" : "Perbarui Catatan"}
+          {pending ? "Menyimpan…" : mode === "create" ? "Simpan Catatan Harian" : "Perbarui Catatan"}
         </button>
-        {state && !state.ok && (
-          <span role="alert" className="text-sm font-medium text-rose-600">
-            {state.error}
-          </span>
-        )}
-        {state && state.ok && (
-          <span role="status" className="text-sm font-medium text-emerald-600">
-            {state.message}
-          </span>
-        )}
+        <FormFeedback state={state} dirty={fb.dirty} />
       </div>
     </form>
   );

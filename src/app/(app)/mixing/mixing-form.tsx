@@ -88,6 +88,7 @@ export function MixingForm({
                   {r.kind === "MAIN_PERCENT" ? (
                     <input
                       type="number"
+                      inputMode="decimal"
                       name={`line.${i}.percent`}
                       value={r.percent}
                       min="0"
@@ -98,6 +99,7 @@ export function MixingForm({
                   ) : (
                     <input
                       type="number"
+                      inputMode="decimal"
                       name={`line.${i}.fixedWeight`}
                       value={r.fixedWeight}
                       min="0"

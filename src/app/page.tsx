@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 
-export default function Home() {
-  // The dashboard is every role's landing (the Owner's home; SRS §3.8 / UC-03).
-  redirect("/dashboard");
+import { homePathForRole } from "@/lib/nav";
+import { getSessionUser } from "@/lib/server/auth";
+
+export default async function Home() {
+  // Role-specific landing: Admin -> daily task board; Owner/Superadmin -> Dashboard.
+  const user = await getSessionUser();
+  redirect(user ? homePathForRole(user.role) : "/login");
 }

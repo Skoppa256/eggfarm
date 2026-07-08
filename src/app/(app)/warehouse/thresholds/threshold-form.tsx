@@ -48,7 +48,7 @@ export function ThresholdForm({
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Minimum (pcs, 0 menghapus)
-          <input type="number" name="minQuantity" min={0} defaultValue={0} className={fieldClass} />
+          <input type="number" inputMode="numeric" name="minQuantity" min={0} defaultValue={0} className={fieldClass} />
         </label>
       </div>
       <div className="flex items-center gap-3">

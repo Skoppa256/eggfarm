@@ -21,7 +21,18 @@ export function PopulasiAwalForm({
   );
 
   return (
-    <form action={formAction} className="flex flex-col gap-1">
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        if (
+          !window.confirm(
+            "Perbaiki Populasi Awal? Seluruh riwayat HIDUP penempatan ini akan dihitung ulang.",
+          )
+        )
+          e.preventDefault();
+      }}
+      className="flex flex-col gap-1"
+    >
       <input type="hidden" name="placementId" value={placementId} />
       <div className="flex items-center gap-1">
         <input

@@ -1,41 +1,77 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { homePathForRole } from "@/lib/nav";
 import { getSessionUser, type Role } from "@/lib/server/auth";
 
-import { logoutAction } from "./actions";
-import { SideNavLinks } from "./side-nav";
+import { AppShell, type IconName, type NavGroup } from "./app-nav";
 
-function navLinks(role: Role): { href: string; label: string }[] {
-  const links = [{ href: "/dashboard", label: "Dashboard" }];
-  // Reports: Owner + Superadmin (Admin is daily-ops only; reports are Superadmin-managed).
-  if (role === "OWNER" || role === "SUPERADMIN") {
-    links.push({ href: "/reports", label: "Laporan" });
-  }
-  // Daily operations: Admin + Superadmin (incl. Warehouse egg-stock ops).
-  if (role === "ADMIN" || role === "SUPERADMIN") {
-    links.push({ href: "/collections", label: "Pengambilan" });
-    links.push({ href: "/grading", label: "Grading" });
-    links.push({ href: "/daily", label: "Harian" });
-    links.push({ href: "/ingredients", label: "Bahan Pakan" });
-    links.push({ href: "/mixing", label: "Mixing" });
-    links.push({ href: "/ovk", label: "OVK" });
-    links.push({ href: "/vaksin", label: "Vaksin" });
-    links.push({ href: "/sales", label: "Penjualan" });
-    links.push({ href: "/buyers", label: "Pembeli" });
-    links.push({ href: "/warehouse", label: "Gudang" });
-  }
-  // Structure & master data: Superadmin only (Warehouses master, Farmhouses, Flocks, catalogs, users).
-  if (role === "SUPERADMIN") {
-    links.push({ href: "/warehouses", label: "Data Gudang" });
-    links.push({ href: "/flocks", label: "Flock" });
-    links.push({ href: "/farmhouses", label: "Kandang" });
-    links.push({ href: "/units", label: "Satuan" });
-    links.push({ href: "/grade-types", label: "Jenis Grade" });
-    links.push({ href: "/users", label: "Pengguna" });
-  }
-  return links;
+// Grouped, role-filtered navigation. Items carry the roles that may see them so the
+// same source respects existing gating (Superadmin-only items never show for Admin).
+type GroupDef = {
+  title: string;
+  items: { href: string; label: string; icon: IconName; roles: Role[] }[];
+};
+
+const OPS: Role[] = ["ADMIN", "SUPERADMIN"];
+const SA: Role[] = ["SUPERADMIN"];
+
+const GROUPS: GroupDef[] = [
+  {
+    title: "Tugas Harian",
+    items: [
+      { href: "/tugas", label: "Tugas Hari Ini", icon: "tasks", roles: OPS },
+      { href: "/collections", label: "Koleksi", icon: "egg", roles: OPS },
+      { href: "/grading", label: "Grading", icon: "scale", roles: OPS },
+      { href: "/daily", label: "Catatan Harian", icon: "clipboard", roles: OPS },
+    ],
+  },
+  {
+    title: "Gudang & Penjualan",
+    items: [
+      { href: "/warehouse", label: "Stok Gudang", icon: "box", roles: OPS },
+      { href: "/warehouse/correction", label: "Koreksi Stok", icon: "adjust", roles: SA },
+      { href: "/sales", label: "Penjualan", icon: "cart", roles: OPS },
+      { href: "/buyers", label: "Pembeli", icon: "people", roles: OPS },
+    ],
+  },
+  {
+    title: "Pakan & Kesehatan",
+    items: [
+      { href: "/mixing", label: "Pakan (Mixing)", icon: "beaker", roles: OPS },
+      { href: "/ingredients", label: "Bahan Pakan", icon: "grid", roles: OPS },
+      { href: "/ovk", label: "OVK", icon: "pill", roles: OPS },
+      { href: "/vaksin", label: "Vaksin", icon: "shield", roles: OPS },
+    ],
+  },
+  {
+    title: "Analitik",
+    items: [
+      // Admin can reach analytics via nav, but their home is the task board.
+      { href: "/dashboard", label: "Dashboard", icon: "chart", roles: ["ADMIN", "OWNER", "SUPERADMIN"] },
+      { href: "/reports", label: "Laporan", icon: "document", roles: ["OWNER", "SUPERADMIN"] },
+    ],
+  },
+  {
+    title: "Data & Pengaturan",
+    items: [
+      { href: "/warehouses", label: "Data Gudang", icon: "box", roles: SA },
+      { href: "/farmhouses", label: "Kandang", icon: "home", roles: SA },
+      { href: "/flocks", label: "Flock", icon: "layers", roles: SA },
+      { href: "/grade-types", label: "Jenis Grade", icon: "tag", roles: SA },
+      { href: "/units", label: "Satuan", icon: "ruler", roles: SA },
+      { href: "/users", label: "Pengguna", icon: "people", roles: SA },
+    ],
+  },
+];
+
+function navGroupsFor(role: Role): NavGroup[] {
+  return GROUPS.map((g) => ({
+    title: g.title,
+    items: g.items
+      .filter((i) => i.roles.includes(role))
+      .map(({ href, label, icon }) => ({ href, label, icon })),
+  })).filter((g) => g.items.length > 0);
 }
 
 // Protected application shell. Middleware gives a first-pass redirect for
@@ -48,28 +84,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen w-full">
-      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50">
-        <div className="border-b border-zinc-200 px-4 py-3">
-          <Link href="/dashboard" className="font-semibold tracking-tight">
-            EggFarm IMS
-          </Link>
-        </div>
-        <SideNavLinks links={navLinks(user.role)} />
-        <div className="border-t border-zinc-200 p-3">
-          <div className="px-1 text-sm font-medium text-zinc-700">{user.name}</div>
-          <div className="px-1 text-xs text-zinc-400">{user.role}</div>
-          <form action={logoutAction} className="mt-2">
-            <button
-              type="submit"
-              className="w-full rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100"
-            >
-              Keluar
-            </button>
-          </form>
-        </div>
-      </aside>
-      <main className="min-w-0 flex-1">{children}</main>
-    </div>
+    <AppShell
+      user={{ name: user.name, role: user.role }}
+      groups={navGroupsFor(user.role)}
+      homeHref={homePathForRole(user.role)}
+    >
+      {children}
+    </AppShell>
   );
 }

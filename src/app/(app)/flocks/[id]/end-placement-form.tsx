@@ -18,7 +18,14 @@ export function EndPlacementForm({
   );
 
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!window.confirm("Akhiri penempatan ini? Kandang akan dibebaskan (riwayat tetap disimpan)."))
+          e.preventDefault();
+      }}
+      className="flex flex-wrap items-center gap-2"
+    >
       <input type="hidden" name="placementId" value={placementId} />
       <input
         type="date"

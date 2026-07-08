@@ -36,7 +36,7 @@ export function DeliveryForm({
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Jumlah (kg)
-        <input type="number" name="quantity" min="0.001" step="0.001" required className={fieldClass} />
+        <input type="number" inputMode="decimal" name="quantity" min="0.001" step="0.001" required className={fieldClass} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Tanggal
