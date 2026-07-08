@@ -4,6 +4,45 @@ Running log of what was built, slice by slice. Newest summary on top.
 
 ---
 
+## Admin UX — Riwayat panels (Catatan Harian + Mixing) + mixing intake pre-fill ✅
+
+Presentation-only slice (CLAUDE.md §5 untouched — no ledger/write/formula/write-once/role-guard
+change). Both screens now show a read-only **"Riwayat (hari sebelumnya)"** per kandang, populated
+as soon as a kandang is chosen (before "Muat"), plus a UI-default pre-fill for the mixing intake.
+
+### What was built
+- **Read-only queries** (no writes): `recentMixings(farmhouseId, before, limit=5)` and
+  `recentDailyRecords(farmhouseId, before, limit=5)` — last N records strictly before the selected
+  date, most-recent-first; daily includes `placement.flock` for HARI. Light DB unit tests for
+  order / `before`-filter / limit.
+- **Riwayat — Mixing:** Tanggal · HIDUP · Proyeksi intake (g/ekor) · Total Campur/Masuk (kg) · Sisa (kg);
+  no-mix days flagged ("0 · tanpa mix").
+- **Riwayat — Catatan Harian:** Tanggal · HARI · MATI · AFKIR · HIDUP · HD% · Berat Telur · Realisasi Intake.
+- **Mixing intake pre-fill:** the intake field defaults to the most recent prior *actual* mix's
+  `projectedIntake` with a "dari &lt;tgl&gt;" hint. UI default only — no pre-write/auto-submit; the
+  Admin edits freely and still confirms via Muat, so the write-once PAKAN MASUK flow is unchanged.
+- **Interaction:** the kandang `<select>` auto-submits its GET filter on change (client `KandangSelect`)
+  so the Riwayat + pre-fill appear before Muat; on Mixing it clears the intake first so it re-fills
+  from the newly chosen kandang (never carries the previous value). Navigation only.
+
+### Key decisions (logged)
+- **Mobile columns (no horizontal scroll):** phones show the decision-relevant subset; the rest
+  reveal at `sm:`. Mixing shows Tanggal / Intake / Masuk (HIDUP + Sisa at sm+). Daily shows
+  Tanggal / MATI / AFKIR / HIDUP (HARI / HD% / Berat / Intake at sm+).
+- **"Total Telur or HD%" → HD%** (the frozen stored `hdPercent`), avoiding a live per-row bucket recompute.
+- **Pre-fill source = most recent prior day with `totalCampur > 0`** (skips no-mix days per the brief's
+  "only no-mix days → empty"); empty + "belum ada acuan — isi manual" when there is none. Bounded to
+  the 5-row Riwayat window (5 consecutive no-mix days → empty; pathological).
+- **Auto-submit on kandang change** is the mechanism for "appears as soon as a kandang is chosen." It
+  does not bypass validation: daily still requires explicit Save; mixing still requires Muat → confirm
+  for the compute / draw-down / reconcile.
+
+### Test status
+Two read-only `findMany` helpers added; no server-logic change. tsc clean · eslint clean ·
+Vitest **161/161** · `next build` ok.
+
+---
+
 ## ✅ v2 COMPLETE — all 13 slices shipped (updated after Slice 13)
 
 - **All 13 slices complete & committed**, plus three confirmed-fact fixes and a docs-sync

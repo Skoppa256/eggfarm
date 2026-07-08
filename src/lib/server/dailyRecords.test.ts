@@ -6,6 +6,7 @@ import { createCollection } from "@/lib/server/collections";
 import {
   createDailyRecord,
   liveEggBuckets,
+  recentDailyRecords,
   updateDailyRecord,
 } from "@/lib/server/dailyRecords";
 import { prisma } from "@/lib/server/db";
@@ -49,6 +50,41 @@ const input = (over: Partial<Parameters<typeof createDailyRecord>[1]> = {}) => (
   sisaDibuang: 0,
   beratTelur: 0,
   ...over,
+});
+
+describe("recentDailyRecords — read-only Riwayat (prior daily records)", () => {
+  it("returns prior records most-recent-first with placement flock, filtered and limited", async () => {
+    const s = await setup();
+    const mk = (dateStr: string, mati: number, hidup: number) =>
+      prisma.dailyRecord.create({
+        data: {
+          farmhouseId: s.farmhouseId,
+          placementId: s.placementId,
+          date: D(dateStr),
+          mati,
+          afkir: 0,
+          hidup,
+          hdPercent: 80,
+          enteredById: s.userId,
+        },
+      });
+    await mk("2026-07-02", 1, 999);
+    await mk("2026-07-03", 2, 997);
+    await mk("2026-07-04", 0, 997);
+
+    const rows = await recentDailyRecords(s.farmhouseId, D("2026-07-05"));
+    expect(rows.map((r) => r.date.toISOString().slice(0, 10))).toEqual([
+      "2026-07-04",
+      "2026-07-03",
+      "2026-07-02",
+    ]);
+    expect(rows[0].hidup).toBe(997);
+    // flock is included so the panel can derive HARI (age) per row.
+    expect(rows[0].placement.flock.chickInDate.toISOString().slice(0, 10)).toBe("2026-07-01");
+
+    expect((await recentDailyRecords(s.farmhouseId, D("2026-07-03"))).length).toBe(1); // only 07-02
+    expect((await recentDailyRecords(s.farmhouseId, D("2026-07-05"), 2)).length).toBe(2);
+  });
 });
 
 describe("daily record — HIDUP + HD% frozen at creation", () => {

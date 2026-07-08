@@ -200,6 +200,20 @@ export function findDailyRecord(farmhouseId: string, date: Date) {
 }
 
 /**
+ * Read-only history for the "Riwayat" panel: the kandang's last `limit` daily records
+ * strictly before `before`, most recent first, with the placement's flock (for HARI/age).
+ * No writes — just lets the Admin see the trend and sanity-check today's numbers.
+ */
+export function recentDailyRecords(farmhouseId: string, before: Date, limit = 5) {
+  return prisma.dailyRecord.findMany({
+    where: { farmhouseId, date: { lt: toBusinessDate(before) } },
+    orderBy: { date: "desc" },
+    take: limit,
+    include: { placement: { include: { flock: true } } },
+  });
+}
+
+/**
  * Create the day's record. Resolves the active placement, applies MATI/AFKIR to the
  * HIDUP ledger (write-once via the flock helper), freezes HIDUP and HD%, and stores the
  * Admin inputs — all atomically. Duplicate (kandang/date) → edit instead. Day-0

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/server/db";
 import { createFarmhouse } from "@/lib/server/farmhouses";
 import { createFlock } from "@/lib/server/flocks";
 import { getIngredientStock, recordDelivery } from "@/lib/server/ingredientLedger";
-import { createMixing, findMixing } from "@/lib/server/mixing";
+import { createMixing, findMixing, recentMixings } from "@/lib/server/mixing";
 
 import { resetDb } from "../../../test/helpers";
 
@@ -44,6 +44,44 @@ const deliver = (ingredientId: string, quantity: number, userId: string) =>
   recordDelivery({ ingredientId, quantity, enteredById: userId });
 const stockOf = async (ingredientId: string) =>
   (await getIngredientStock()).find((s) => s.ingredientId === ingredientId)?.currentQuantity.toNumber() ?? 0;
+
+describe("recentMixings — read-only Riwayat (prior consumption days)", () => {
+  it("returns prior days most-recent-first, filtered by `before` and limited", async () => {
+    const s = await setup();
+    const mk = (dateStr: string, intake: number, totalCampur: number) =>
+      prisma.mixingRecord.create({
+        data: {
+          farmhouseId: s.farmhouseId,
+          placementId: s.placementId,
+          date: D(dateStr),
+          projectedIntake: intake,
+          hidupAtMix: 3000,
+          requirement: 300,
+          reusableLeftover: 0,
+          totalCampur,
+          jenis: "DKLS-36",
+          enteredById: s.userId,
+        },
+      });
+    await mk("2026-07-05", 100, 250);
+    await mk("2026-07-06", 105, 0); // no-mix day (leftover covered it)
+    await mk("2026-07-07", 110, 275);
+
+    const rows = await recentMixings(s.farmhouseId, D("2026-07-08"));
+    expect(rows.map((r) => r.date.toISOString().slice(0, 10))).toEqual([
+      "2026-07-07",
+      "2026-07-06",
+      "2026-07-05",
+    ]);
+    expect(rows[0].projectedIntake.toNumber()).toBe(110); // top row -> today's intake pre-fill
+    expect(rows[1].totalCampur.toNumber()).toBe(0); // no-mix day preserved for the panel
+
+    // `before` excludes same/later days; limit caps the count.
+    const beforeSix = await recentMixings(s.farmhouseId, D("2026-07-06"));
+    expect(beforeSix.map((r) => r.date.toISOString().slice(0, 10))).toEqual(["2026-07-05"]);
+    expect((await recentMixings(s.farmhouseId, D("2026-07-08"), 2)).length).toBe(2);
+  });
+});
 
 describe("mixing — requirement, netting, mains-by-% vs fixed supplement, draw-down (FR-82..85)", () => {
   it("computes the 398.486 kg requirement and draws each line down from central stock", async () => {

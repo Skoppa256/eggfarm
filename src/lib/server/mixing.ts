@@ -74,6 +74,19 @@ export function previousMixing(farmhouseId: string, date: Date) {
 }
 
 /**
+ * Read-only history for the "Riwayat" panel: the kandang's last `limit` consumption
+ * days strictly before `before`, most recent first. Scalar columns only (no draw-down,
+ * no writes). Used to show the Admin yesterday's data and pre-fill today's intake.
+ */
+export function recentMixings(farmhouseId: string, before: Date, limit = 5) {
+  return prisma.mixingRecord.findMany({
+    where: { farmhouseId, date: { lt: toBusinessDate(before) } },
+    orderBy: { date: "desc" },
+    take: limit,
+  });
+}
+
+/**
  * The planning inputs the mixing screen shows before confirming: the resolved HIDUP,
  * yesterday's reusable leftover, the requirement, and the netted fresh mix (MASUK).
  */

@@ -15,6 +15,7 @@ import {
   findDailyRecord,
   liveEggBuckets,
   previousReusableLeftover,
+  recentDailyRecords,
   resolvePlacementForDate,
 } from "@/lib/server/dailyRecords";
 import { resolveWarehouse } from "@/lib/server/farmhouses";
@@ -22,7 +23,10 @@ import { resolveHidup } from "@/lib/server/flocks";
 import { findMixing } from "@/lib/server/mixing";
 import { vaksinForDailyRecord } from "@/lib/server/vaksin";
 
+import { KandangSelect } from "../kandang-select";
+import { fmtRiwayatDate } from "../riwayat";
 import { DailyForm, type DailyFormDefaults } from "./daily-form";
+import { DailyHistory, type DailyRiwayatRow } from "./daily-history";
 import { DailyReportCard, type DailyReport } from "./daily-report";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +71,20 @@ export default async function DailyPage({
   const farmhouseId =
     sp.farmhouseId && farmhouses.some((f) => f.id === sp.farmhouseId) ? sp.farmhouseId : undefined;
 
+  // Read-only Riwayat: the last 5 daily records for the selected kandang, before today.
+  const selectedDate = new Date(`${dateStr}T00:00:00Z`);
+  const history = farmhouseId ? await recentDailyRecords(farmhouseId, selectedDate, 5) : [];
+  const dailyRows: DailyRiwayatRow[] = history.map((r) => ({
+    dateStr: fmtRiwayatDate(r.date),
+    hari: computeHari(r.placement.flock.placementAge, r.placement.flock.chickInDate, r.date),
+    mati: r.mati,
+    afkir: r.afkir,
+    hidup: r.hidup,
+    hdPercent: r.hdPercent.toNumber().toFixed(2),
+    beratTelur: r.beratTelur.toNumber().toFixed(3),
+    intake: r.realisasiIntake != null ? r.realisasiIntake.toNumber().toFixed(3) : "—",
+  }));
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 sm:p-8">
       <header>
@@ -83,14 +101,12 @@ export default async function DailyPage({
       >
         <label className="flex flex-col gap-1 text-sm font-medium">
           Kandang
-          <select name="farmhouseId" defaultValue={farmhouseId ?? ""} className={fieldClass}>
-            <option value="">Pilih…</option>
-            {farmhouses.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name} ({f.code})
-              </option>
-            ))}
-          </select>
+          <KandangSelect
+            name="farmhouseId"
+            defaultValue={farmhouseId ?? ""}
+            options={farmhouses.map((f) => ({ id: f.id, label: `${f.name} (${f.code})` }))}
+            className={fieldClass}
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Tanggal
@@ -103,6 +119,8 @@ export default async function DailyPage({
           Muat
         </button>
       </form>
+
+      {farmhouseId && <DailyHistory rows={dailyRows} />}
 
       {farmhouseId ? (
         <DailyEditor

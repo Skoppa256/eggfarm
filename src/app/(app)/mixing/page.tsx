@@ -5,9 +5,12 @@ import { businessToday, formatDateOnly } from "@/lib/dates";
 import { getSessionUser } from "@/lib/server/auth";
 import { listActiveFarmhouses } from "@/lib/server/catalog";
 import { listActiveIngredients } from "@/lib/server/ingredients";
-import { findMixing, mixingPlan, previousMixing } from "@/lib/server/mixing";
+import { findMixing, mixingPlan, previousMixing, recentMixings } from "@/lib/server/mixing";
 
+import { KandangSelect } from "../kandang-select";
+import { fmtRiwayatDate } from "../riwayat";
 import { MixingForm } from "./mixing-form";
+import { MixingHistory, type MixingRiwayatRow } from "./mixing-history";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +43,25 @@ export default async function MixingPage({
     sp.farmhouseId && farmhouses.some((f) => f.id === sp.farmhouseId) ? sp.farmhouseId : undefined;
   const intake = sp.intake && Number.isFinite(Number(sp.intake)) ? Number(sp.intake) : undefined;
 
+  // Read-only Riwayat: the last 5 consumption days before the selected day. The top
+  // row seeds today's intake pre-fill (UI default only — the Admin still confirms via Muat).
+  const selectedDate = new Date(`${dateStr}T00:00:00Z`);
+  const history = farmhouseId ? await recentMixings(farmhouseId, selectedDate, 5) : [];
+  // Pre-fill from the most recent prior day that ACTUALLY mixed (totalCampur > 0). A
+  // no-mix day carries an intake but isn't a real reference, so we skip it (brief: only
+  // no-mix days → leave empty). Never pre-fill 0. Bounded to the 5-row Riwayat window.
+  const prefill = history.find((m) => m.totalCampur.toNumber() > 0);
+  const prefillIntake = prefill ? prefill.projectedIntake.toNumber() : undefined;
+  const intakeDefault = sp.intake ?? (prefillIntake != null ? String(prefillIntake) : "");
+  const mixingRows: MixingRiwayatRow[] = history.map((m) => ({
+    dateStr: fmtRiwayatDate(m.date),
+    hidup: m.hidupAtMix,
+    intake: m.projectedIntake.toNumber().toString(),
+    masuk: m.totalCampur.toNumber().toFixed(3),
+    sisa: m.reusableLeftover.toNumber().toFixed(3),
+    noMix: m.totalCampur.toNumber() === 0,
+  }));
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 sm:p-8">
       <header>
@@ -57,14 +79,13 @@ export default async function MixingPage({
       >
         <label className="flex flex-col gap-1 text-sm font-medium">
           Kandang
-          <select name="farmhouseId" defaultValue={farmhouseId ?? ""} className={fieldClass}>
-            <option value="">Pilih…</option>
-            {farmhouses.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name} ({f.code})
-              </option>
-            ))}
-          </select>
+          <KandangSelect
+            name="farmhouseId"
+            defaultValue={farmhouseId ?? ""}
+            options={farmhouses.map((f) => ({ id: f.id, label: `${f.name} (${f.code})` }))}
+            className={fieldClass}
+            resetFields={["intake"]}
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Hari konsumsi
@@ -72,7 +93,13 @@ export default async function MixingPage({
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Proyeksi intake (g/ekor)
-          <input type="number" name="intake" min="0" step="0.001" defaultValue={sp.intake ?? ""} className={fieldClass} />
+          <input type="number" inputMode="decimal" name="intake" min="0" step="0.001" defaultValue={intakeDefault} className={fieldClass} />
+          {!sp.intake &&
+            (prefill != null ? (
+              <span className="text-xs font-normal text-emerald-600">dari {fmtRiwayatDate(prefill.date)}</span>
+            ) : farmhouseId ? (
+              <span className="text-xs font-normal text-zinc-400">belum ada acuan — isi manual</span>
+            ) : null)}
         </label>
         <button
           type="submit"
@@ -81,6 +108,8 @@ export default async function MixingPage({
           Muat
         </button>
       </form>
+
+      {farmhouseId && <MixingHistory rows={mixingRows} />}
 
       {farmhouseId && intake ? (
         <MixEditor farmhouseId={farmhouseId} dateStr={dateStr} intake={intake} />
